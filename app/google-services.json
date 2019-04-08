@@ -1,0 +1,44 @@
+{
+  "project_info": {
+    "project_number": "86041741976",
+    "firebase_url": "https://face-hide.firebaseio.com",
+    "project_id": "face-hide",
+    "storage_bucket": "face-hide.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:86041741976:android:cdf714b850eeb27d",
+        "android_client_info": {
+          "package_name": "com.github.naz013.facehide"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "86041741976-n0i3rrg4khjmetmr5l7oeo8cvf4db387.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.github.naz013.facehide",
+            "certificate_hash": "6bfd36bde48f7834f1fafaacff93b897bcbe155e"
+          }
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBFlsLgl4zv1VD8ZqUz218xkMSLa9L8-zo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "86041741976-f4cgtj3tkna8bml4kpqc3dmqi5a8mskc.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
