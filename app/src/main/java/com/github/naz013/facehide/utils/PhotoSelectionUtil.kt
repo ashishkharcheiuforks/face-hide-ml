@@ -66,7 +66,6 @@ class PhotoSelectionUtil(private val activity: Activity, private val urlSupporte
             intent = Intent(Intent.ACTION_OPEN_DOCUMENT)
             intent.addCategory(Intent.CATEGORY_OPENABLE)
             intent.type = "image/*"
-            intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
         }
         val chooser = Intent.createChooser(intent, activity.getString(R.string.gallery))
         try {

@@ -4,4 +4,6 @@
     <string name="gallery">Gallery</string>
     <string name="from_url">From Url</string>
     <string name="take_a_shot">Take a Shot</string>
+    <string name="select_photo">Select photo</string>
+    <string name="save">Save</string>
 </resources>
