@@ -6,40 +6,38 @@ import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
+import androidx.databinding.DataBindingUtil
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProviders
-import com.github.naz013.facehide.utils.PhotoManipulationView
+import com.github.naz013.facehide.databinding.ActivityMainBinding
 import com.github.naz013.facehide.utils.PhotoSelectionUtil
-import com.google.android.material.button.MaterialButton
 import timber.log.Timber
 
 class MainActivity : AppCompatActivity(), PhotoSelectionUtil.UriCallback {
 
     private lateinit var photoSelectionUtil: PhotoSelectionUtil
     private lateinit var viewModel: RecognitionViewModel
-    private lateinit var photoManipulationView: PhotoManipulationView
+    private lateinit var binding: ActivityMainBinding
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        binding = DataBindingUtil.setContentView(this, R.layout.activity_main)
 
-        photoManipulationView = findViewById(R.id.manipulationView)
-
-        findViewById<MaterialButton>(R.id.selectPhotoButton).setOnClickListener { photoSelectionUtil.selectImage() }
-        findViewById<MaterialButton>(R.id.saveButton).setOnClickListener { saveChanges() }
+        binding.galleryButton.setOnClickListener { photoSelectionUtil.pickFromGallery() }
+        binding.cameraButton.setOnClickListener { photoSelectionUtil.takePhoto() }
 
         photoSelectionUtil = PhotoSelectionUtil(this, false, this)
         viewModel = ViewModelProviders.of(this).get(RecognitionViewModel::class.java)
         viewModel.foundFaces.observe(this, Observer {
             Timber.d("onCreate: faces $it")
             if (it != null) {
-                photoManipulationView.showFaces(it)
+                binding.manipulationView.showFaces(it)
             }
         })
         viewModel.originalPhoto.observe(this, Observer {
             Timber.d("onCreate: photo $it")
             if (it != null) {
-                photoManipulationView.setPhoto(it)
+                binding.manipulationView.setPhoto(it)
             }
         })
     }

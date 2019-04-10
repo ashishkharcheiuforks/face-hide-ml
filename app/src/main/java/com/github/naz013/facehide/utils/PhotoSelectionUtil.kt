@@ -56,7 +56,7 @@ class PhotoSelectionUtil(private val activity: Activity, private val urlSupporte
         builder.create().show()
     }
 
-    private fun pickFromGallery() {
+    fun pickFromGallery() {
         if (!checkSdPermission(REQUEST_SD_CARD)) {
             return
         }
@@ -88,7 +88,7 @@ class PhotoSelectionUtil(private val activity: Activity, private val urlSupporte
         mCallback?.onImageSelected(imageUri, null)
     }
 
-    private fun takePhoto() {
+    fun takePhoto() {
         if (!checkCameraPermission(REQUEST_CAMERA)) {
             return
         }

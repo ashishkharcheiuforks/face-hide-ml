@@ -1,33 +1,93 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:orientation="vertical"
-    tools:context=".MainActivity">
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
-    <LinearLayout
+    <RelativeLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal">
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        tools:context=".MainActivity">
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/selectPhotoButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/select_photo" />
+        <com.github.naz013.facehide.utils.PhotoManipulationView
+            android:id="@+id/manipulationView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_marginTop="28dp"
+            android:layout_marginBottom="28dp" />
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/saveButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/save" />
+        <FrameLayout
+            android:layout_width="112dp"
+            android:layout_height="112dp"
+            android:layout_marginStart="-56dp"
+            android:layout_marginTop="-56dp"
+            android:background="@drawable/gradient_round">
 
-    </LinearLayout>
+            <ImageView
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:layout_gravity="bottom|end"
+                android:layout_margin="8dp"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_face_detection" />
 
-    <com.github.naz013.facehide.utils.PhotoManipulationView
-        android:id="@+id/manipulationView"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        </FrameLayout>
 
-</LinearLayout>
+        <FrameLayout
+            android:layout_width="112dp"
+            android:layout_height="112dp"
+            android:layout_alignParentEnd="true"
+            android:layout_marginTop="-56dp"
+            android:layout_marginEnd="-56dp"
+            android:background="@drawable/gradient_round">
+
+            <ImageView
+                android:id="@+id/moreButton"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:layout_gravity="bottom|start"
+                android:layout_margin="8dp"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_more_vertical" />
+
+        </FrameLayout>
+
+        <FrameLayout
+            android:layout_width="112dp"
+            android:layout_height="112dp"
+            android:layout_alignParentEnd="true"
+            android:layout_alignParentBottom="true"
+            android:layout_marginEnd="-56dp"
+            android:layout_marginBottom="-56dp"
+            android:background="@drawable/gradient_round">
+
+            <ImageView
+                android:id="@+id/cameraButton"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:layout_gravity="start"
+                android:layout_margin="8dp"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_shutter" />
+
+        </FrameLayout>
+
+        <FrameLayout
+            android:layout_width="112dp"
+            android:layout_height="112dp"
+            android:layout_alignParentBottom="true"
+            android:layout_marginStart="-56dp"
+            android:layout_marginBottom="-56dp"
+            android:background="@drawable/gradient_round">
+
+            <ImageView
+                android:id="@+id/galleryButton"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:layout_gravity="end"
+                android:layout_margin="8dp"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_gallery" />
+
+        </FrameLayout>
+    </RelativeLayout>
+</layout>
