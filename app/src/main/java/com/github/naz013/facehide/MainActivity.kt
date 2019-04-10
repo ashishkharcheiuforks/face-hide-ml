@@ -65,4 +65,10 @@ class MainActivity : AppCompatActivity(), PhotoSelectionUtil.UriCallback {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         photoSelectionUtil.onRequestPermissionsResult(requestCode, permissions, grantResults)
     }
+
+    override fun onBackPressed() {
+        if (!binding.manipulationView.hidePopups()) {
+            finish()
+        }
+    }
 }

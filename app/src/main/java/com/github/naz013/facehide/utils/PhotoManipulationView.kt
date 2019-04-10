@@ -13,15 +13,16 @@ import kotlin.math.min
 
 class PhotoManipulationView : View {
 
-    private var resizedPhoto: Bitmap? = null
-
     private val paint: Paint = Paint()
     private var mWidth: Int = 0
     private var mHeight: Int = 0
 
+    private var photo: Photo? = null
     private val faces: MutableList<Face> = mutableListOf()
-    private var mSelectedItem = 0
+
+    private var mSelectedItem = -1
     private var isSlided = false
+    private var isPhotoMenuVisible = false
 
     private var mX: Float = 0f
     private var mY: Float = 0f
@@ -39,37 +40,66 @@ class PhotoManipulationView : View {
         if (canvas == null) {
             super.onDraw(canvas)
         } else {
-            val bmp = resizedPhoto ?: return
-            canvas.drawBitmap(bmp, 0f, 0f, paint)
+            photo?.draw(canvas)
             for (f in faces) f.draw(canvas)
         }
     }
 
+    fun hidePopups(): Boolean {
+        if (isPhotoMenuVisible || mSelectedItem != -1) {
+            Timber.d("hidePopups: ")
+            isPhotoMenuVisible = false
+            mSelectedItem = -1
+            this.invalidate()
+            return true
+        }
+        return false
+    }
+
     fun setPhoto(bitmap: Bitmap) {
-        this.resizedPhoto = scaledBitmap(bitmap, mWidth, mHeight)
+        this.photo = null
         this.faces.clear()
+
+        val resizedPhoto = scaledBitmap(bitmap, mWidth, mHeight)
+        if (resizedPhoto != null) {
+            this.photo = Photo(resizedPhoto, selectPoint(resizedPhoto, mWidth, mHeight))
+        }
+
         this.invalidate()
     }
 
     fun showFaces(scanResult: RecognitionViewModel.ScanResult) {
-        val currentPhoto = resizedPhoto ?: return
-        val widthFactor = currentPhoto.width.toFloat() / scanResult.bmp.width.toFloat()
-        val heightFactor = currentPhoto.height.toFloat() / scanResult.bmp.height.toFloat()
+        val currentPhoto = photo ?: return
+        val currentBitmap = currentPhoto.bitmap
+        val widthFactor = currentBitmap.width.toFloat() / scanResult.bmp.width.toFloat()
+        val heightFactor = currentBitmap.height.toFloat() / scanResult.bmp.height.toFloat()
         val factor = (widthFactor + heightFactor) / 2f
 
         Timber.d("showFaces: $factor")
 
         val newFaces = scanResult.list.map {
             val rect = it.boundingBox
-            val left = (rect.left.toFloat() * factor).toInt()
-            val top = (rect.top.toFloat() * factor).toInt()
-            val right = (rect.right.toFloat() * factor).toInt()
-            val bottom = (rect.bottom.toFloat() * factor).toInt()
+            val point = currentPhoto.point
+            val left = (rect.left.toFloat() * factor).toInt() + point.x
+            val top = (rect.top.toFloat() * factor).toInt() + point.y
+            val right = (rect.right.toFloat() * factor).toInt() + point.x
+            val bottom = (rect.bottom.toFloat() * factor).toInt() + point.y
             Face(Rect(left, top, right, bottom))
         }
         this.faces.clear()
         this.faces.addAll(newFaces)
         this.invalidate()
+    }
+
+    private fun selectPoint(bitmap: Bitmap, width: Int, height: Int): Point {
+        if (bitmap.width == width && bitmap.height == height) return Point(0, 0)
+        var wMargin = (width - bitmap.width) / 2
+        if (wMargin <= 0) wMargin = 0
+
+        var hMargin = (height - bitmap.height) / 2
+        if (hMargin <= 0) hMargin = 0
+
+        return Point(wMargin, hMargin)
     }
 
     private fun scaledBitmap(bitmap: Bitmap, width: Int, height: Int): Bitmap? {
@@ -135,11 +165,23 @@ class PhotoManipulationView : View {
             }
             event.action == MotionEvent.ACTION_UP -> {
                 if (!isSlided) {
-                    val item = findIndex(event.x, event.y)
-                    if (item != mSelectedItem) {
-                        mSelectedItem = item
-
+                    val index = findIndex(event.x, event.y)
+                    val isPhoto = photo?.inBounds(event.rawX.toInt(), event.rawY.toInt()) ?: false
+                    Timber.d("processTouch: $isPhoto, $event")
+                    if (index != -1) {
+                        if (index != mSelectedItem) {
+                            Timber.d("processTouch: face clicked")
+                            mSelectedItem = index
+                            v.playSoundEffect(SoundEffectConstants.CLICK)
+                            this.invalidate()
+                        }
+                    } else if (isPhoto) {
+                        Timber.d("processTouch: photo clicked")
+                        isPhotoMenuVisible = true
                         v.playSoundEffect(SoundEffectConstants.CLICK)
+                        this.invalidate()
+                    } else {
+                        hidePopups()
                     }
                 }
                 isSlided = false
@@ -155,10 +197,26 @@ class PhotoManipulationView : View {
                 return i
             }
         }
-        return 0
+        return -1
     }
 
-    inner class Face(val rect: Rect, var mask: Bitmap? = null, private val color: Int = colors[Random().nextInt(colors.size)]) {
+    inner class Photo(val bitmap: Bitmap, val point: Point) {
+        var bounds: Rect = Rect(point.x, point.y, point.x + bitmap.width, point.y + bitmap.height)
+
+        fun inBounds(x: Int, y: Int): Boolean = bounds.contains(x, y)
+        private fun x(): Float = point.x.toFloat()
+        private fun y(): Float = point.y.toFloat()
+
+        fun draw(canvas: Canvas) {
+            Timber.d("draw: $point, $bounds")
+            canvas.drawBitmap(bitmap, x(), y(), paint)
+        }
+    }
+
+    inner class Face(val rect: Rect, var mask: Bitmap? = null,
+                     private val color: Int = colors[Random().nextInt(colors.size)]) {
+
+
         fun draw(canvas: Canvas) {
             Timber.d("draw: $rect")
             paint.color = color
