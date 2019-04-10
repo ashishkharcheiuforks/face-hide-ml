@@ -2,8 +2,10 @@ package com.github.naz013.facehide
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.Matrix
 import android.net.Uri
 import android.provider.MediaStore
+import androidx.exifinterface.media.ExifInterface
 import androidx.lifecycle.LifecycleObserver
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -53,11 +55,32 @@ class RecognitionViewModel : ViewModel(), LifecycleObserver {
         launchDefault {
             try {
                 val bitmap = MediaStore.Images.Media.getBitmap(context.contentResolver, uri)
-                detectFromBitmap(bitmap)
+                val stream = context.contentResolver.openInputStream(uri)
+                val bmp = stream.let {
+                    if (it != null) {
+                        val ei = ExifInterface(it)
+                        val orientation = ei.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_UNDEFINED)
+                        Timber.d("detectFromFile: $orientation")
+                        when (orientation) {
+                            ExifInterface.ORIENTATION_ROTATE_90 -> rotateImage(bitmap, 90f)
+                            ExifInterface.ORIENTATION_ROTATE_180 -> rotateImage(bitmap, 180f)
+                            ExifInterface.ORIENTATION_ROTATE_270 -> rotateImage(bitmap, 270f)
+                            ExifInterface.ORIENTATION_NORMAL -> bitmap
+                            else -> bitmap
+                        }
+                    } else bitmap
+                }
+                detectFromBitmap(bmp)
             } catch (e: IOException) {
                 showError()
             }
         }
+    }
+
+    private fun rotateImage(source: Bitmap, angle: Float): Bitmap {
+        val matrix = Matrix()
+        matrix.postRotate(angle)
+        return Bitmap.createBitmap(source, 0, 0, source.width, source.height, matrix, true)
     }
 
     private fun scaledBitmap(bitmap: Bitmap, maxSize: Int = 512): Bitmap {
