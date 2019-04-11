@@ -11,12 +11,18 @@ import timber.log.Timber
 import java.util.*
 import kotlin.math.min
 
+
 class PhotoManipulationView : View {
 
     private val paint: Paint = Paint()
+    private var mShadowPaint: Paint = Paint()
+    private var mArrowPaint: Paint = Paint()
     private var mWidth: Int = 0
     private var mHeight: Int = 0
+    private var mPopupHeight: Int = 56
 
+    private var facePopup: FacePopup? = null
+    private var photoPopup: PhotoPopup? = null
     private var photo: Photo? = null
     private val faces: MutableList<Face> = mutableListOf()
 
@@ -30,6 +36,18 @@ class PhotoManipulationView : View {
     constructor(context: Context): this(context, null)
     constructor(context: Context, attrs: AttributeSet?): this(context, attrs, 0)
     constructor(context: Context, attrs: AttributeSet?, deffStyleAttr: Int): super(context, attrs, deffStyleAttr) {
+        mPopupHeight = dp2px(56)
+
+        mShadowPaint.isAntiAlias = true
+        mShadowPaint.color = Color.WHITE
+        mShadowPaint.setShadowLayer(dp2px(5).toFloat(), 0f, 0f, Color.parseColor("#40000000"))
+        mShadowPaint.style = Paint.Style.FILL
+        setLayerType(View.LAYER_TYPE_SOFTWARE, mShadowPaint)
+
+        mArrowPaint.isAntiAlias = true
+        mArrowPaint.color = Color.WHITE
+        mArrowPaint.style = Paint.Style.FILL
+
         paint.style = Paint.Style.STROKE
         paint.strokeWidth = dp2px(2).toFloat()
 
@@ -42,6 +60,11 @@ class PhotoManipulationView : View {
         } else {
             photo?.draw(canvas)
             for (f in faces) f.draw(canvas)
+            if (mSelectedItem != -1) {
+                facePopup?.draw(canvas)
+            } else if (isPhotoMenuVisible) {
+                photoPopup?.draw(canvas)
+            }
         }
     }
 
@@ -50,6 +73,8 @@ class PhotoManipulationView : View {
             Timber.d("hidePopups: ")
             isPhotoMenuVisible = false
             mSelectedItem = -1
+            facePopup = null
+            photoPopup = null
             this.invalidate()
             return true
         }
@@ -59,6 +84,7 @@ class PhotoManipulationView : View {
     fun setPhoto(bitmap: Bitmap) {
         this.photo = null
         this.faces.clear()
+        hidePopups()
 
         val resizedPhoto = scaledBitmap(bitmap, mWidth, mHeight)
         if (resizedPhoto != null) {
@@ -165,23 +191,30 @@ class PhotoManipulationView : View {
             }
             event.action == MotionEvent.ACTION_UP -> {
                 if (!isSlided) {
-                    val index = findIndex(event.x, event.y)
-                    val isPhoto = photo?.inBounds(event.rawX.toInt(), event.rawY.toInt()) ?: false
-                    Timber.d("processTouch: $isPhoto, $event")
-                    if (index != -1) {
-                        if (index != mSelectedItem) {
-                            Timber.d("processTouch: face clicked")
-                            mSelectedItem = index
+                    if (mSelectedItem != -1 || isPhotoMenuVisible) {
+                        hidePopups()
+                        v.playSoundEffect(SoundEffectConstants.CLICK)
+                    } else {
+                        val index = findIndex(event.x, event.y)
+                        val isPhoto = photo?.inBounds(event.x.toInt(), event.y.toInt()) ?: false
+                        Timber.d("processTouch: $isPhoto, $event")
+                        if (index != -1) {
+                            if (index != mSelectedItem) {
+                                Timber.d("processTouch: face clicked")
+                                mSelectedItem = index
+                                facePopup = FacePopup(faces[index])
+                                v.playSoundEffect(SoundEffectConstants.CLICK)
+                                this.invalidate()
+                            }
+                        } else if (isPhoto) {
+                            Timber.d("processTouch: photo clicked")
+                            isPhotoMenuVisible = true
+                            photoPopup = PhotoPopup(findPhotoPlace(event.x, event.y))
                             v.playSoundEffect(SoundEffectConstants.CLICK)
                             this.invalidate()
+                        } else {
+                            hidePopups()
                         }
-                    } else if (isPhoto) {
-                        Timber.d("processTouch: photo clicked")
-                        isPhotoMenuVisible = true
-                        v.playSoundEffect(SoundEffectConstants.CLICK)
-                        this.invalidate()
-                    } else {
-                        hidePopups()
                     }
                 }
                 isSlided = false
@@ -200,28 +233,134 @@ class PhotoManipulationView : View {
         return -1
     }
 
-    inner class Photo(val bitmap: Bitmap, val point: Point) {
-        var bounds: Rect = Rect(point.x, point.y, point.x + bitmap.width, point.y + bitmap.height)
+    private fun findPhotoPlace(x: Float, y: Float): PopupBg {
+        val gravity = if (mHeight - y > mPopupHeight * 2) {
+            Gravity.BOTTOM
+        } else {
+            Gravity.TOP
+        }
+        val half = mPopupHeight / 2
+        val right = mWidth - half
+        val point = PointF(x, y)
+        val rect = if (gravity == Gravity.TOP) {
+            val top = y.toInt() - half - mPopupHeight
+            val bottom = top + mPopupHeight
+            Rect(half, top, right, bottom)
+        } else {
+            val top = y.toInt() + half
+            val bottom = top + mPopupHeight
+            Rect(half, top, right, bottom)
+        }
+        return PopupBg(Arrow(gravity, half, point, mArrowPaint), rect.toRectF(), mShadowPaint, dp2px(5).toFloat())
+    }
 
+    private fun findPopupPlace(face: Face): PopupBg {
+        val gravity = if (mHeight - face.rect.bottom > mPopupHeight * 2) {
+            Gravity.BOTTOM
+        } else {
+            Gravity.TOP
+        }
+        val half = mPopupHeight / 2
+        val right = mWidth - half
+        val point: Point
+        val rect = if (gravity == Gravity.TOP) {
+            val top = face.rect.top - half - mPopupHeight
+            val bottom = top + mPopupHeight
+            point = Point(face.rect.centerX(), face.rect.top)
+            Rect(half, top, right, bottom)
+        } else {
+            val top = face.rect.bottom + half
+            val bottom = top + mPopupHeight
+            point = Point(face.rect.centerX(), face.rect.bottom)
+            Rect(half, top, right, bottom)
+        }
+        return PopupBg(Arrow(gravity, half, point.toPointF(), mArrowPaint), rect.toRectF(), mShadowPaint, dp2px(5).toFloat())
+    }
+
+    private fun Rect.toRectF(): RectF = RectF(left.toFloat(), top.toFloat(), right.toFloat(), bottom.toFloat())
+
+    private fun Point.toPointF(): PointF = PointF(x.toFloat(), y.toFloat())
+
+    inner class PhotoPopup(popupBg: PopupBg) : Popup(popupBg) {
+        override fun draw(canvas: Canvas) {
+            super.draw(canvas)
+        }
+    }
+
+    inner class FacePopup(face: Face) : Popup(findPopupPlace(face)) {
+        override fun draw(canvas: Canvas) {
+            super.draw(canvas)
+        }
+    }
+
+    open inner class Popup(private val popupBg: PopupBg) {
+        open fun draw(canvas: Canvas) {
+            popupBg.draw(canvas)
+        }
+    }
+
+    inner class PopupBg(private val arrow: Arrow, private val rect: RectF, private val paint: Paint,
+                        private val radius: Float = dp2px(5).toFloat()) {
+        fun draw(canvas: Canvas) {
+            Timber.d("draw: $rect")
+            canvas.drawRoundRect(rect, radius, radius, paint)
+            arrow.draw(canvas)
+        }
+    }
+
+    inner class Arrow(private val gravity: Gravity, private val side: Int, private val point: PointF, private val paint: Paint) {
+        fun draw(canvas: Canvas) {
+            Timber.d("draw: $gravity, $side, $point")
+            val path = Path()
+            when (gravity) {
+                Gravity.TOP -> {
+                    path.moveTo(point.x + (side / 2f), point.y - side)
+                    path.lineTo(point.x - (side / 2f), point.y - side)
+                    path.lineTo(point.x, point.y + (side / 2f))
+                }
+                Gravity.BOTTOM -> {
+                    path.moveTo(point.x - (side / 2f), point.y + side)
+                    path.lineTo(point.x + (side / 2f), point.y + side)
+                    path.lineTo(point.x, point.y + (side / 2f))
+                }
+                Gravity.RIGHT -> {
+
+                }
+                Gravity.LEFT -> {
+
+                }
+            }
+            path.close()
+            canvas.drawPath(path, paint)
+//            canvas.drawCircle(point.x, point.y, dp2px(10).toFloat(), paint)
+        }
+    }
+
+    inner class Face(val rect: Rect, var mask: Bitmap? = null,
+                     private val color: Int = colors[Random().nextInt(colors.size)]) {
+        fun draw(canvas: Canvas) {
+            Timber.d("draw: $rect")
+            paint.color = color
+            canvas.drawRect(rect, paint)
+        }
+    }
+
+    inner class Photo(val bitmap: Bitmap, val point: Point) {
+        private var bounds: Rect = Rect(point.x, point.y, point.x + bitmap.width, point.y + bitmap.height)
         fun inBounds(x: Int, y: Int): Boolean = bounds.contains(x, y)
         private fun x(): Float = point.x.toFloat()
         private fun y(): Float = point.y.toFloat()
-
         fun draw(canvas: Canvas) {
             Timber.d("draw: $point, $bounds")
             canvas.drawBitmap(bitmap, x(), y(), paint)
         }
     }
 
-    inner class Face(val rect: Rect, var mask: Bitmap? = null,
-                     private val color: Int = colors[Random().nextInt(colors.size)]) {
-
-
-        fun draw(canvas: Canvas) {
-            Timber.d("draw: $rect")
-            paint.color = color
-            canvas.drawRect(rect, paint)
-        }
+    enum class Gravity {
+        TOP,
+        BOTTOM,
+        RIGHT,
+        LEFT
     }
 
     companion object {
