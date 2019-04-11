@@ -309,19 +309,22 @@ class PhotoManipulationView : View {
     }
 
     inner class Arrow(private val gravity: Gravity, private val side: Int, private val point: PointF, private val paint: Paint) {
+
+        private val halfSide = side / 2f
+
         fun draw(canvas: Canvas) {
             Timber.d("draw: $gravity, $side, $point")
             val path = Path()
             when (gravity) {
                 Gravity.TOP -> {
-                    path.moveTo(point.x + (side / 2f), point.y - side)
-                    path.lineTo(point.x - (side / 2f), point.y - side)
-                    path.lineTo(point.x, point.y + (side / 2f))
+                    path.moveTo(point.x + halfSide, point.y - side)
+                    path.lineTo(point.x - halfSide, point.y - side)
+                    path.lineTo(point.x, point.y - halfSide)
                 }
                 Gravity.BOTTOM -> {
-                    path.moveTo(point.x - (side / 2f), point.y + side)
-                    path.lineTo(point.x + (side / 2f), point.y + side)
-                    path.lineTo(point.x, point.y + (side / 2f))
+                    path.moveTo(point.x - halfSide, point.y + side)
+                    path.lineTo(point.x + halfSide, point.y + side)
+                    path.lineTo(point.x, point.y + halfSide)
                 }
                 Gravity.RIGHT -> {
 
