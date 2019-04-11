@@ -5,7 +5,11 @@ import android.graphics.*
 import android.util.AttributeSet
 import android.util.DisplayMetrics
 import android.view.*
+import androidx.annotation.DrawableRes
 import androidx.annotation.Px
+import androidx.core.content.ContextCompat
+import androidx.core.graphics.drawable.toBitmap
+import com.github.naz013.facehide.R
 import com.github.naz013.facehide.RecognitionViewModel
 import timber.log.Timber
 import java.util.*
@@ -25,6 +29,7 @@ class PhotoManipulationView : View {
     private var photoPopup: PhotoPopup? = null
     private var photo: Photo? = null
     private val faces: MutableList<Face> = mutableListOf()
+    private val masks: MutableList<Mask> = mutableListOf()
 
     private var mSelectedItem = -1
     private var isSlided = false
@@ -37,6 +42,13 @@ class PhotoManipulationView : View {
     constructor(context: Context, attrs: AttributeSet?): this(context, attrs, 0)
     constructor(context: Context, attrs: AttributeSet?, deffStyleAttr: Int): super(context, attrs, deffStyleAttr) {
         mPopupHeight = dp2px(56)
+
+        masks.clear()
+        val rect = Rect(0, 0, mPopupHeight, mPopupHeight)
+        val list = emojis.map {
+            Mask(Point(), rect, toDrawable(it), paint)
+        }.filter { it.bitmap != null }.toList()
+        masks.addAll(list)
 
         mShadowPaint.isAntiAlias = true
         mShadowPaint.color = Color.WHITE
@@ -233,6 +245,12 @@ class PhotoManipulationView : View {
         return -1
     }
 
+    private fun toDrawable(@DrawableRes res: Int): Bitmap? {
+        if (res == 0) return null
+        val drawable = ContextCompat.getDrawable(context, res)
+        return drawable?.toBitmap()
+    }
+
     private fun findPhotoPlace(x: Float, y: Float): PopupBg {
         val gravity = if (mHeight - y > mPopupHeight * 2) {
             Gravity.BOTTOM
@@ -281,6 +299,17 @@ class PhotoManipulationView : View {
 
     private fun Point.toPointF(): PointF = PointF(x.toFloat(), y.toFloat())
 
+    private fun toRect(rect: Rect, point: Point): Rect {
+        return Rect(point.x, point.y, point.x + rect.width(), point.y + rect.height())
+    }
+
+    private fun toRectF(rect: Rect, point: PointF): RectF {
+        return RectF(
+            point.x, point.y,
+            point.x + rect.width().toFloat(), point.y + rect.height().toFloat()
+        )
+    }
+
     inner class PhotoPopup(popupBg: PopupBg) : Popup(popupBg) {
         override fun draw(canvas: Canvas) {
             super.draw(canvas)
@@ -288,12 +317,27 @@ class PhotoManipulationView : View {
     }
 
     inner class FacePopup(face: Face) : Popup(findPopupPlace(face)) {
+        private val emojiArray = EmojiArray(face, masks, Point(popupBg.topLeft()))
         override fun draw(canvas: Canvas) {
             super.draw(canvas)
+            emojiArray.draw(canvas)
         }
     }
 
-    open inner class Popup(private val popupBg: PopupBg) {
+    inner class EmojiArray(face: Face, val emojis: List<Mask>, point: Point) {
+        init {
+            for (i in 0 until emojis.size) {
+                emojis[i].point = Point(point.x + (point.x * i), point.y)
+            }
+        }
+        fun draw(canvas: Canvas) {
+            for (e in emojis) {
+                e.draw(canvas)
+            }
+        }
+    }
+
+    open inner class Popup(protected val popupBg: PopupBg) {
         open fun draw(canvas: Canvas) {
             popupBg.draw(canvas)
         }
@@ -301,6 +345,7 @@ class PhotoManipulationView : View {
 
     inner class PopupBg(private val arrow: Arrow, private val rect: RectF, private val paint: Paint,
                         private val radius: Float = dp2px(5).toFloat()) {
+        fun topLeft(): Point = Point(rect.left.toInt(), rect.top.toInt())
         fun draw(canvas: Canvas) {
             Timber.d("draw: $rect")
             canvas.drawRoundRect(rect, radius, radius, paint)
@@ -339,12 +384,31 @@ class PhotoManipulationView : View {
         }
     }
 
-    inner class Face(val rect: Rect, var mask: Bitmap? = null,
+    inner class Face(val rect: Rect, var mask: Mask? = null,
                      private val color: Int = colors[Random().nextInt(colors.size)]) {
         fun draw(canvas: Canvas) {
             Timber.d("draw: $rect")
             paint.color = color
             canvas.drawRect(rect, paint)
+            mask?.paint = paint
+            mask?.rect = rect
+            mask?.point = Point(0, 0)
+            mask?.draw(canvas)
+        }
+    }
+
+    inner class Mask(var point: Point, var rect: Rect, val bitmap: Bitmap?, var paint: Paint) {
+        private val padding = dp2px(4)
+        fun draw(canvas: Canvas) {
+            Timber.d("draw: $rect")
+            if (bitmap != null) {
+                val r = toRect(rect, point)
+                r.left = r.left + padding
+                r.top = r.top + padding
+                r.right = r.right - padding
+                r.bottom = r.bottom - padding
+                canvas.drawBitmap(bitmap, null, r, paint)
+            }
         }
     }
 
@@ -367,6 +431,43 @@ class PhotoManipulationView : View {
     }
 
     companion object {
+        private val emojis = arrayOf(
+            R.drawable.ic_wink,
+            R.drawable.ic_unhappy,
+            R.drawable.ic_tongue_out,
+            R.drawable.ic_suspicious,
+            R.drawable.ic_suspicious_1,
+            R.drawable.ic_surprised,
+            R.drawable.ic_surprised_1,
+            R.drawable.ic_smile,
+            R.drawable.ic_smiling,
+            R.drawable.ic_smart,
+            R.drawable.ic_secret,
+            R.drawable.ic_sad,
+            R.drawable.ic_quiet,
+            R.drawable.ic_ninja,
+            R.drawable.ic_nerd,
+            R.drawable.ic_mad,
+            R.drawable.ic_kissing,
+            R.drawable.ic_in_love,
+            R.drawable.ic_ill,
+            R.drawable.ic_happy,
+            R.drawable.ic_happy_1,
+            R.drawable.ic_happy_2,
+            R.drawable.ic_happy_3,
+            R.drawable.ic_happy_4,
+            R.drawable.ic_embarrassed,
+            R.drawable.ic_emoticons,
+            R.drawable.ic_crying,
+            R.drawable.ic_crying_1,
+            R.drawable.ic_confused,
+            R.drawable.ic_confused_1,
+            R.drawable.ic_bored,
+            R.drawable.ic_bored_1,
+            R.drawable.ic_bored_2,
+            R.drawable.ic_angry,
+            R.drawable.ic_angry_1
+        )
         private val rawColors = arrayOf("#F44336", "#E91E63", "#9C27B0", "#673AB7",
             "#3F51B5", "#2196F3", "#03A9F4", "#00BCD4",
             "#009688", "#4CAF50", "#8BC34A", "#CDDC39",
