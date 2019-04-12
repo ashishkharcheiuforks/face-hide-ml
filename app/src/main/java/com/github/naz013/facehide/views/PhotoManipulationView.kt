@@ -1,16 +1,16 @@
-package com.github.naz013.facehide.utils
+package com.github.naz013.facehide.views
 
 import android.content.Context
 import android.graphics.*
 import android.util.AttributeSet
-import android.util.DisplayMetrics
-import android.view.*
+import android.view.MotionEvent
+import android.view.SoundEffectConstants
+import android.view.View
 import androidx.annotation.DrawableRes
-import androidx.annotation.Px
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.toBitmap
-import com.github.naz013.facehide.R
 import com.github.naz013.facehide.RecognitionViewModel
+import com.github.naz013.facehide.utils.ViewUtils
 import timber.log.Timber
 import java.util.*
 import kotlin.math.min
@@ -41,18 +41,18 @@ class PhotoManipulationView : View {
     constructor(context: Context): this(context, null)
     constructor(context: Context, attrs: AttributeSet?): this(context, attrs, 0)
     constructor(context: Context, attrs: AttributeSet?, deffStyleAttr: Int): super(context, attrs, deffStyleAttr) {
-        mPopupHeight = dp2px(56)
+        mPopupHeight = ViewUtils.dp2px(context, 56)
 
-        masks.clear()
-        val rect = Rect(0, 0, mPopupHeight, mPopupHeight)
-        val list = emojis.map {
-            Mask(Point(), rect, toDrawable(it), paint)
-        }.filter { it.bitmap != null }.toList()
-        masks.addAll(list)
+//        masks.clear()
+//        val rect = Rect(0, 0, mPopupHeight, mPopupHeight)
+//        val list = emojis.map {
+//            Mask(Point(), rect, toDrawable(it), paint)
+//        }.filter { it.bitmap != null }.toList()
+//        masks.addAll(list)
 
         mShadowPaint.isAntiAlias = true
         mShadowPaint.color = Color.WHITE
-        mShadowPaint.setShadowLayer(dp2px(5).toFloat(), 0f, 0f, Color.parseColor("#40000000"))
+        mShadowPaint.setShadowLayer(ViewUtils.dp2px(context, 5).toFloat(), 0f, 0f, Color.parseColor("#40000000"))
         mShadowPaint.style = Paint.Style.FILL
         setLayerType(View.LAYER_TYPE_SOFTWARE, mShadowPaint)
 
@@ -61,7 +61,7 @@ class PhotoManipulationView : View {
         mArrowPaint.style = Paint.Style.FILL
 
         paint.style = Paint.Style.STROKE
-        paint.strokeWidth = dp2px(2).toFloat()
+        paint.strokeWidth = ViewUtils.dp2px(context, 2).toFloat()
 
         setOnTouchListener { _, _ -> false }
     }
@@ -162,18 +162,8 @@ class PhotoManipulationView : View {
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec)
-        mHeight = View.MeasureSpec.getSize(heightMeasureSpec)
-        mWidth = View.MeasureSpec.getSize(widthMeasureSpec)
-    }
-
-    @Px
-    private fun dp2px(dp: Int): Int {
-        val wm = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager?
-        var display: Display? = null
-        if (wm != null) display = wm.defaultDisplay
-        val displayMetrics = DisplayMetrics()
-        display?.getMetrics(displayMetrics)
-        return (dp * displayMetrics.density + 0.5f).toInt()
+        mHeight = MeasureSpec.getSize(heightMeasureSpec)
+        mWidth = MeasureSpec.getSize(widthMeasureSpec)
     }
 
     override fun setOnLongClickListener(l: OnLongClickListener?) {
@@ -187,6 +177,12 @@ class PhotoManipulationView : View {
     }
 
     private fun processTouch(v: View, event: MotionEvent): Boolean {
+        val popup = facePopup
+        if (mSelectedItem != -1 && popup != null) {
+            if (popup.isTouching(event.x, event.y)) {
+                return popup.forwardTouch(event)
+            }
+        }
         when {
             event.action == MotionEvent.ACTION_DOWN -> {
                 mX = event.x
@@ -195,6 +191,7 @@ class PhotoManipulationView : View {
                 return true
             }
             event.action == MotionEvent.ACTION_MOVE -> {
+
                 if (Math.abs(event.x - mX) > 30 || Math.abs(event.y - mY) > 30) {
                     isSlided = true
                     return false
@@ -269,7 +266,10 @@ class PhotoManipulationView : View {
             val bottom = top + mPopupHeight
             Rect(half, top, right, bottom)
         }
-        return PopupBg(Arrow(gravity, half, point, mArrowPaint), rect.toRectF(), mShadowPaint, dp2px(5).toFloat())
+        return PopupBg(Arrow(gravity, half, point, mArrowPaint), rect.toRectF(), mShadowPaint, ViewUtils.dp2px(
+            context,
+            5
+        ).toFloat())
     }
 
     private fun findPopupPlace(face: Face): PopupBg {
@@ -292,7 +292,10 @@ class PhotoManipulationView : View {
             point = Point(face.rect.centerX(), face.rect.bottom)
             Rect(half, top, right, bottom)
         }
-        return PopupBg(Arrow(gravity, half, point.toPointF(), mArrowPaint), rect.toRectF(), mShadowPaint, dp2px(5).toFloat())
+        return PopupBg(Arrow(gravity, half, point.toPointF(), mArrowPaint), rect.toRectF(), mShadowPaint, ViewUtils.dp2px(
+            context,
+            5
+        ).toFloat())
     }
 
     private fun Rect.toRectF(): RectF = RectF(left.toFloat(), top.toFloat(), right.toFloat(), bottom.toFloat())
@@ -317,23 +320,33 @@ class PhotoManipulationView : View {
     }
 
     inner class FacePopup(face: Face) : Popup(findPopupPlace(face)) {
-        private val emojiArray = EmojiArray(face, masks, Point(popupBg.topLeft()))
+        private val emojiArray = EmojiArray(face, popupBg.rect())
+        fun isTouching(x: Float, y: Float): Boolean {
+            return popupBg.rect().contains(x.toInt(), y.toInt())
+        }
+        fun forwardTouch(event: MotionEvent): Boolean {
+            Timber.d("forwardTouch: ")
+            return emojiArray.scroller.touch(event)
+        }
         override fun draw(canvas: Canvas) {
             super.draw(canvas)
             emojiArray.draw(canvas)
         }
     }
 
-    inner class EmojiArray(face: Face, val emojis: List<Mask>, point: Point) {
+    inner class EmojiArray(face: Face, private val rect: Rect) {
+        val scroller = Scroller(context)
         init {
-            for (i in 0 until emojis.size) {
-                emojis[i].point = Point(point.x + (point.x * i), point.y)
-            }
+            val widthSpec = MeasureSpec.makeMeasureSpec(rect.width(), MeasureSpec.EXACTLY)
+            val heightSpec = MeasureSpec.makeMeasureSpec(rect.height(), MeasureSpec.EXACTLY)
+            scroller.measure(widthSpec, heightSpec)
+            scroller.layout (0, 0, rect.width(), rect.height())
         }
         fun draw(canvas: Canvas) {
-            for (e in emojis) {
-                e.draw(canvas)
-            }
+            canvas.save()
+            canvas.translate(rect.left.toFloat(), rect.top.toFloat())
+            scroller.draw(canvas)
+            canvas.restore()
         }
     }
 
@@ -344,8 +357,11 @@ class PhotoManipulationView : View {
     }
 
     inner class PopupBg(private val arrow: Arrow, private val rect: RectF, private val paint: Paint,
-                        private val radius: Float = dp2px(5).toFloat()) {
+                        private val radius: Float = ViewUtils.dp2px(context, 5).toFloat()) {
+        private val padding = ViewUtils.dp2px(context, 8)
         fun topLeft(): Point = Point(rect.left.toInt(), rect.top.toInt())
+        fun rect(): Rect = Rect(rect.left.toInt() + padding, rect.top.toInt() + padding,
+            rect.right.toInt() - padding, rect.bottom.toInt() - padding)
         fun draw(canvas: Canvas) {
             Timber.d("draw: $rect")
             canvas.drawRoundRect(rect, radius, radius, paint)
@@ -385,7 +401,8 @@ class PhotoManipulationView : View {
     }
 
     inner class Face(val rect: Rect, var mask: Mask? = null,
-                     private val color: Int = colors[Random().nextInt(colors.size)]) {
+                     private val color: Int = colors[Random().nextInt(
+                         colors.size)]) {
         fun draw(canvas: Canvas) {
             Timber.d("draw: $rect")
             paint.color = color
@@ -398,7 +415,7 @@ class PhotoManipulationView : View {
     }
 
     inner class Mask(var point: Point, var rect: Rect, val bitmap: Bitmap?, var paint: Paint) {
-        private val padding = dp2px(4)
+        private val padding = ViewUtils.dp2px(context, 4)
         fun draw(canvas: Canvas) {
             Timber.d("draw: $rect")
             if (bitmap != null) {
@@ -431,43 +448,7 @@ class PhotoManipulationView : View {
     }
 
     companion object {
-        private val emojis = arrayOf(
-            R.drawable.ic_wink,
-            R.drawable.ic_unhappy,
-            R.drawable.ic_tongue_out,
-            R.drawable.ic_suspicious,
-            R.drawable.ic_suspicious_1,
-            R.drawable.ic_surprised,
-            R.drawable.ic_surprised_1,
-            R.drawable.ic_smile,
-            R.drawable.ic_smiling,
-            R.drawable.ic_smart,
-            R.drawable.ic_secret,
-            R.drawable.ic_sad,
-            R.drawable.ic_quiet,
-            R.drawable.ic_ninja,
-            R.drawable.ic_nerd,
-            R.drawable.ic_mad,
-            R.drawable.ic_kissing,
-            R.drawable.ic_in_love,
-            R.drawable.ic_ill,
-            R.drawable.ic_happy,
-            R.drawable.ic_happy_1,
-            R.drawable.ic_happy_2,
-            R.drawable.ic_happy_3,
-            R.drawable.ic_happy_4,
-            R.drawable.ic_embarrassed,
-            R.drawable.ic_emoticons,
-            R.drawable.ic_crying,
-            R.drawable.ic_crying_1,
-            R.drawable.ic_confused,
-            R.drawable.ic_confused_1,
-            R.drawable.ic_bored,
-            R.drawable.ic_bored_1,
-            R.drawable.ic_bored_2,
-            R.drawable.ic_angry,
-            R.drawable.ic_angry_1
-        )
+
         private val rawColors = arrayOf("#F44336", "#E91E63", "#9C27B0", "#673AB7",
             "#3F51B5", "#2196F3", "#03A9F4", "#00BCD4",
             "#009688", "#4CAF50", "#8BC34A", "#CDDC39",

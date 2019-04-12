@@ -8,7 +8,7 @@
         android:orientation="vertical"
         tools:context=".MainActivity">
 
-        <com.github.naz013.facehide.utils.PhotoManipulationView
+        <com.github.naz013.facehide.views.PhotoManipulationView
             android:id="@+id/manipulationView"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
