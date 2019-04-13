@@ -256,8 +256,8 @@ class PhotoManipulationView : View {
     }
 
     inner class Face(val rect: Rect, var mask: Mask? = null) {
-        private val shader = LinearGradient(0f, 0f, 50f, 40f, colors[random.nextInt(colors.size)],
-            colors[random.nextInt(colors.size)], Shader.TileMode.CLAMP)
+        private val shader = LinearGradient(0f, 0f, 0f, rect.width().toFloat(), colors[random.nextInt(colors.size)],
+            colors[random.nextInt(colors.size)], Shader.TileMode.MIRROR)
         fun draw(canvas: Canvas) {
             Timber.d("draw: $rect")
             paint.shader = shader
@@ -293,11 +293,13 @@ class PhotoManipulationView : View {
 
     companion object {
 
-        private val rawColors = arrayOf("#F44336", "#E91E63", "#9C27B0", "#673AB7",
-            "#3F51B5", "#2196F3", "#03A9F4", "#00BCD4",
-            "#009688", "#4CAF50", "#8BC34A", "#CDDC39",
-            "#FFEB3B", "#FFC107", "#FF9800", "#FF5722",
-            "#795548", "#9E9E9E", "#607D8B", "#FFFFFF"
+        private val rawColors = arrayOf(
+            "#7E1037", "#C14E76", "#DF7DA6", "#F7B2CF", "#FFE4E1",
+            "#35BBCA", "#0191B4", "#F8D90F", "#D3DD18", "#FE7A15",
+            "#47CACC", "#63BCC9", "#CDB3D4", "#E7B7C8", "#FFBE88",
+            "#FC6B05", "#FFB62B", "#65B017", "#99D8DB", "#9BB7BB",
+            "#D6A3DC", "#F7DB70", "#EABEBF", "#75CCE8", "#A5DEE5",
+            "#60EFDB", "#BEF2E5", "#C5E7F1", "#79CEED", "#6F89A2"
         )
 
         private val colors = rawColors.map{ Color.parseColor(it) }
