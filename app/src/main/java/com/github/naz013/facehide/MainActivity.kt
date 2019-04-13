@@ -3,9 +3,11 @@ package com.github.naz013.facehide
 import android.content.ClipData
 import android.content.Intent
 import android.graphics.Bitmap
+import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
 import android.view.View
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.PopupMenu
 import androidx.databinding.DataBindingUtil
@@ -14,11 +16,14 @@ import androidx.lifecycle.ViewModelProviders
 import androidx.recyclerview.widget.GridLayoutManager
 import com.github.naz013.facehide.databinding.ActivityMainBinding
 import com.github.naz013.facehide.databinding.DialogEmojiListBinding
+import com.github.naz013.facehide.databinding.DialogSavePhotoBinding
 import com.github.naz013.facehide.utils.Permissions
 import com.github.naz013.facehide.utils.PhotoSelectionUtil
+import com.github.naz013.facehide.utils.UriUtil
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import org.jetbrains.anko.toast
 import timber.log.Timber
+
 
 class MainActivity : AppCompatActivity(), PhotoSelectionUtil.UriCallback {
 
@@ -34,18 +39,24 @@ class MainActivity : AppCompatActivity(), PhotoSelectionUtil.UriCallback {
         binding.cameraButton.setOnClickListener { photoSelectionUtil.takePhoto() }
         binding.moreButton.setOnClickListener { showMorePopup(it) }
         binding.manipulationView.emojiPopupListener = { showEmojiPopup(it) }
+        binding.loadingView.setOnClickListener { }
 
         photoSelectionUtil = PhotoSelectionUtil(this, false, this)
         initViewModel()
     }
 
     private fun showMorePopup(view: View) {
+        val items = if (binding.manipulationView.hasPhoto()) {
+            arrayOf(getString(R.string.save_photo), getString(R.string.settings))
+        } else {
+            arrayOf(getString(R.string.settings))
+        }
         showPopup(view, {
             when (it) {
                 0 -> saveChanges()
                 1 -> openSettings()
             }
-        }, "Save Photo", "Settings")
+        }, *items)
     }
 
     private fun openSettings() {
@@ -74,18 +85,54 @@ class MainActivity : AppCompatActivity(), PhotoSelectionUtil.UriCallback {
         viewModel.isSaved.observe(this, Observer {
             if (it != null) showSuccess(it)
         })
+        viewModel.isLoading.observe(this, Observer {
+            if (it != null) {
+                if (it) binding.loadingView.visibility = View.VISIBLE
+                else binding.loadingView.visibility = View.GONE
+            }
+        })
     }
 
     private fun showSuccess(filePath: String) {
-        toast("Photo saved")
+        val builder = AlertDialog.Builder(this)
+        builder.setTitle(getString(R.string.photo_saved))
+        builder.setMessage(filePath)
+        builder.setPositiveButton(getString(R.string.view)) { dialog, _ ->
+            dialog.dismiss()
+            showPhoto(filePath)
+        }
+        builder.setNeutralButton(getString(R.string.cancel)) { dialog, _ ->
+            dialog.dismiss()
+        }
+        val dialog = builder.create()
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(Color.WHITE)
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(Color.WHITE)
+            dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setTextColor(Color.WHITE)
+        }
+        dialog.show()
+    }
+
+    private fun showPhoto(filePath: String) {
+        val intent = Intent()
+        intent.action = Intent.ACTION_VIEW
+        val photoURI = UriUtil.getUri(this, filePath)
+        intent.setDataAndType(photoURI, "image/*")
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        try {
+            startActivity(Intent.createChooser(intent, getString(R.string.view_using)))
+        } catch (e: Exception) {
+            toast(getString(R.string.image_view_application_not_found))
+        }
     }
 
     private fun showError(e: Int) {
         Timber.d("showError: $e")
         when (e) {
-            RecognitionViewModel.NO_IMAGE -> toast("No photo")
-            RecognitionViewModel.NO_SD -> toast("No sd card")
-            RecognitionViewModel.NO_SPACE -> toast("No enough space")
+            RecognitionViewModel.NO_IMAGE -> toast(getString(R.string.no_photo))
+            RecognitionViewModel.NO_SD -> toast(getString(R.string.no_sd_card))
+            RecognitionViewModel.NO_SPACE -> toast(getString(R.string.no_enough_space))
+            RecognitionViewModel.NO_FACES -> toast(getString(R.string.failed_to_find_faces_on_photo))
         }
     }
 
@@ -106,9 +153,36 @@ class MainActivity : AppCompatActivity(), PhotoSelectionUtil.UriCallback {
 
     private fun saveChanges() {
         if (!checkSdPermission(REQ_SD)) return
+        showFieldDialog()
+    }
+
+    private fun showFieldDialog() {
+        val builder = AlertDialog.Builder(this)
+        val view = DialogSavePhotoBinding.inflate(layoutInflater)
+        builder.setTitle(getString(R.string.save_photo))
+        builder.setView(view.root)
+        builder.setPositiveButton(getString(R.string.save)) { dialog, _ ->
+            dialog.dismiss()
+            savePhoto(view.fileNameField.text.toString().trim())
+        }
+        builder.setNeutralButton(getString(R.string.cancel)) { dialog, _ ->
+            dialog.dismiss()
+        }
+        val dialog = builder.create()
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(Color.WHITE)
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(Color.WHITE)
+            dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setTextColor(Color.WHITE)
+        }
+        dialog.show()
+    }
+
+    private fun savePhoto(fileName: String) {
         val res = binding.manipulationView.prepareResults()
         if (res != null) {
-            viewModel.savePhoto("Test", res)
+            viewModel.savePhoto(fileName, res)
+        } else {
+            toast(getString(R.string.failed_to_read_photo))
         }
     }
 
@@ -116,8 +190,10 @@ class MainActivity : AppCompatActivity(), PhotoSelectionUtil.UriCallback {
         return Permissions.ensurePermissions(this, code, Permissions.READ_EXTERNAL, Permissions.WRITE_EXTERNAL)
     }
 
-    private fun showPopup(anchor: View,
-                          listener: ((Int) -> Unit)?, vararg actions: String) {
+    private fun showPopup(
+        anchor: View,
+        listener: ((Int) -> Unit)?, vararg actions: String
+    ) {
         val popupMenu = PopupMenu(anchor.context, anchor)
         popupMenu.setOnMenuItemClickListener { item ->
             listener?.invoke(item.order)

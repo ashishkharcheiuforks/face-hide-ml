@@ -230,6 +230,10 @@ class PhotoManipulationView : View {
         return AppCompatResources.getDrawable(context, res)?.toBitmap()
     }
 
+    fun hasPhoto(): Boolean {
+        return photo != null
+    }
+
     inner class Face(val rect: Rect, var mask: Mask? = null) {
         private val shader = LinearGradient(0f, 0f, 50f, 40f, colors[random.nextInt(colors.size)],
             colors[random.nextInt(colors.size)], Shader.TileMode.CLAMP)

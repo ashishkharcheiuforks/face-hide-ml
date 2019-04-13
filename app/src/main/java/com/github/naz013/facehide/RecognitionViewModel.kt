@@ -126,6 +126,7 @@ class RecognitionViewModel : ViewModel(), LifecycleObserver {
 
     fun detectFromBitmap(bitmap: Bitmap) {
         scaledPhoto = null
+        _isLoading.postValue(true)
         launchDefault {
             _originalPhoto.postValue(bitmap)
             val scaled = scaledBitmap(bitmap, 1024)
@@ -138,6 +139,7 @@ class RecognitionViewModel : ViewModel(), LifecycleObserver {
     }
 
     fun detectFromFile(context: Context, uri: Uri) {
+        _isLoading.postValue(true)
         launchDefault {
             try {
                 val bitmap = MediaStore.Images.Media.getBitmap(context.contentResolver, uri)
@@ -158,6 +160,7 @@ class RecognitionViewModel : ViewModel(), LifecycleObserver {
                 }
                 detectFromBitmap(bmp)
             } catch (e: IOException) {
+                _isLoading.postValue(false)
                 _error.postValue(NO_IMAGE)
             }
         }
@@ -194,12 +197,18 @@ class RecognitionViewModel : ViewModel(), LifecycleObserver {
         detector.detectInImage(image)
             .addOnSuccessListener {
                 Timber.d("runDetection: success $it")
+                _isLoading.postValue(false)
                 scaledPhoto?.let { photo ->
                     _foundFaces.postValue(ScanResult(photo, it))
                 }
             }
-            .addOnCanceledListener { Timber.d("runDetection: cancel ") }
-            .addOnFailureListener { Timber.d("runDetection: failure $it") }
+            .addOnCanceledListener {
+                _isLoading.postValue(false)
+            }
+            .addOnFailureListener {
+                _isLoading.postValue(false)
+                _error.postValue(NO_FACES)
+            }
     }
 
     data class ScanResult(val bmp: Bitmap, val list: List<FirebaseVisionFace>)
@@ -208,5 +217,6 @@ class RecognitionViewModel : ViewModel(), LifecycleObserver {
         const val NO_IMAGE = 0
         const val NO_SD = 1
         const val NO_SPACE = 2
+        const val NO_FACES = 3
     }
 }
