@@ -2,8 +2,11 @@ package com.github.naz013.facehide
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Matrix
+import android.graphics.Rect
 import android.net.Uri
+import android.os.Environment
 import android.provider.MediaStore
 import androidx.exifinterface.media.ExifInterface
 import androidx.lifecycle.LifecycleObserver
@@ -12,11 +15,14 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import com.github.naz013.facehide.utils.launchDefault
 import com.github.naz013.facehide.utils.withUIContext
+import com.github.naz013.facehide.views.PhotoManipulationView
 import com.google.firebase.ml.vision.FirebaseVision
 import com.google.firebase.ml.vision.common.FirebaseVisionImage
 import com.google.firebase.ml.vision.face.FirebaseVisionFace
 import com.google.firebase.ml.vision.face.FirebaseVisionFaceDetectorOptions
 import timber.log.Timber
+import java.io.File
+import java.io.FileOutputStream
 import java.io.IOException
 import kotlin.math.min
 
@@ -36,7 +42,81 @@ class RecognitionViewModel : ViewModel(), LifecycleObserver {
     private val _foundFaces: MutableLiveData<ScanResult> = MutableLiveData()
     val foundFaces: LiveData<ScanResult> = _foundFaces
 
+    private val _isSaved: MutableLiveData<String> = MutableLiveData()
+    val isSaved: LiveData<String> = _isSaved
+
+    private val _isLoading: MutableLiveData<Boolean> = MutableLiveData()
+    val isLoading: LiveData<Boolean> = _isLoading
+
+    private val _error: MutableLiveData<Int> = MutableLiveData()
+    val error: LiveData<Int> = _error
+
     private var scaledPhoto: Bitmap? = null
+
+    fun savePhoto(fileName: String, results: PhotoManipulationView.Results) {
+        val original = originalPhoto.value
+        if (original == null) {
+            _error.postValue(NO_IMAGE)
+            return
+        }
+        _isLoading.postValue(true)
+        launchDefault {
+            val path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
+            val appPath = File(path, "FaceHide")
+            if (!appPath.exists()) {
+                appPath.mkdirs()
+            }
+            val file = File(appPath, "$fileName.jpg")
+            if (file.exists()) file.delete()
+
+            val size = results.size
+            val widthFactor = original.width.toFloat() / size.width.toFloat()
+            val heightFactor = original.height.toFloat() / size.height.toFloat()
+            val factor = (widthFactor + heightFactor) / 2f
+
+            Timber.d("savePhoto: $factor, $file")
+
+            val newFaces = results.faces.map {
+                val rect = it.rect
+                val left = (rect.left.toFloat() * factor).toInt()
+                val top = (rect.top.toFloat() * factor).toInt()
+                val right = (rect.right.toFloat() * factor).toInt()
+                val bottom = (rect.bottom.toFloat() * factor).toInt()
+                it.rect = Rect(left, top, right, bottom)
+                it
+            }
+
+            val mutableBitmap = original.copy(Bitmap.Config.ARGB_8888, true)
+            val canvas = Canvas(mutableBitmap)
+            newFaces.forEach { it.draw(canvas) }
+            var fos: FileOutputStream? = null
+            try {
+                fos = FileOutputStream(file)
+                mutableBitmap.compress(Bitmap.CompressFormat.PNG, 100, fos)
+                fos.flush()
+                fos.close()
+                fos = null
+            } catch (e: IOException) {
+                e.printStackTrace()
+                withUIContext {
+                    _isLoading.postValue(false)
+                    _error.postValue(NO_SPACE)
+                }
+            } finally {
+                if (fos != null) {
+                    try {
+                        fos.close()
+                    } catch (e: IOException) {
+                        e.printStackTrace()
+                    }
+                }
+            }
+            withUIContext {
+                _isLoading.postValue(false)
+                _isSaved.postValue(file.toString())
+            }
+        }
+    }
 
     fun detectFromBitmap(bitmap: Bitmap) {
         scaledPhoto = null
@@ -121,4 +201,10 @@ class RecognitionViewModel : ViewModel(), LifecycleObserver {
     }
 
     data class ScanResult(val bmp: Bitmap, val list: List<FirebaseVisionFace>)
+
+    companion object Error {
+        const val NO_IMAGE = 0
+        const val NO_SD = 1
+        const val NO_SPACE = 2
+    }
 }

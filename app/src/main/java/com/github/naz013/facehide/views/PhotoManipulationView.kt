@@ -79,6 +79,29 @@ class PhotoManipulationView : View {
         this.invalidate()
     }
 
+    fun prepareResults(): Results? {
+        val currentPhoto = photo ?: return null
+        val currentBitmap = currentPhoto.bitmap
+        val size = Size(currentBitmap.width, currentBitmap.height)
+        val masks = mutableListOf<Mask>()
+        faces.forEach {
+            val mask = it.mask
+            if(mask != null) {
+                masks.add(mask)
+            }
+        }
+        masks.forEach {
+            val rect = it.rect
+            val point = currentPhoto.point
+            val left = rect.left - point.x
+            val top = rect.top - point.y
+            val right = rect.right - point.x
+            val bottom = rect.bottom - point.y
+            it.rect = Rect(left, top, right, bottom)
+        }
+        return Results(size, masks)
+    }
+
     fun showFaces(scanResult: RecognitionViewModel.ScanResult) {
         val currentPhoto = photo ?: return
         val currentBitmap = currentPhoto.bitmap
@@ -103,7 +126,7 @@ class PhotoManipulationView : View {
     }
 
     fun setEmojiToFace(faceId: Int, emojiId: Int) {
-        faces[faceId].mask = Mask(toDrawable(emojiId, faces[faceId].rect))
+        faces[faceId].mask = Mask(toDrawable(emojiId))
         this.invalidate()
     }
 
@@ -198,7 +221,7 @@ class PhotoManipulationView : View {
         return -1
     }
 
-    private fun toDrawable(@DrawableRes res: Int, rect: Rect): Bitmap? {
+    private fun toDrawable(@DrawableRes res: Int): Bitmap? {
         if (res == 0) return null
         return AppCompatResources.getDrawable(context, res)?.toBitmap()
     }
@@ -216,16 +239,11 @@ class PhotoManipulationView : View {
         }
     }
 
-    inner class Mask(val bitmap: Bitmap?, var rect: Rect = Rect(), var paint: Paint = Paint()) {
-        private val padding = ViewUtils.dp2px(context, 4)
+    inner class Mask(private val bitmap: Bitmap?, var rect: Rect = Rect(), var paint: Paint = Paint()) {
         fun draw(canvas: Canvas) {
             Timber.d("draw: $rect")
             if (bitmap != null) {
                 val r = Rect(rect)
-                r.left = r.left + padding
-                r.top = r.top + padding
-                r.right = r.right - padding
-                r.bottom = r.bottom - padding
                 canvas.drawBitmap(bitmap, null, r, paint)
             }
         }
@@ -241,6 +259,10 @@ class PhotoManipulationView : View {
             canvas.drawBitmap(bitmap, x(), y(), paint)
         }
     }
+
+    inner class Results(val size: Size, val faces: List<Mask>)
+
+    inner class Size(val width: Int, val height: Int)
 
     companion object {
 

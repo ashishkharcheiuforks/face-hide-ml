@@ -5,15 +5,19 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
+import android.view.View
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.PopupMenu
 import androidx.databinding.DataBindingUtil
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProviders
 import androidx.recyclerview.widget.GridLayoutManager
 import com.github.naz013.facehide.databinding.ActivityMainBinding
 import com.github.naz013.facehide.databinding.DialogEmojiListBinding
+import com.github.naz013.facehide.utils.Permissions
 import com.github.naz013.facehide.utils.PhotoSelectionUtil
 import com.google.android.material.bottomsheet.BottomSheetDialog
+import org.jetbrains.anko.toast
 import timber.log.Timber
 
 class MainActivity : AppCompatActivity(), PhotoSelectionUtil.UriCallback {
@@ -28,9 +32,27 @@ class MainActivity : AppCompatActivity(), PhotoSelectionUtil.UriCallback {
 
         binding.galleryButton.setOnClickListener { photoSelectionUtil.pickFromGallery() }
         binding.cameraButton.setOnClickListener { photoSelectionUtil.takePhoto() }
+        binding.moreButton.setOnClickListener { showMorePopup(it) }
         binding.manipulationView.emojiPopupListener = { showEmojiPopup(it) }
 
         photoSelectionUtil = PhotoSelectionUtil(this, false, this)
+        initViewModel()
+    }
+
+    private fun showMorePopup(view: View) {
+        showPopup(view, {
+            when (it) {
+                0 -> saveChanges()
+                1 -> openSettings()
+            }
+        }, "Save Photo", "Settings")
+    }
+
+    private fun openSettings() {
+
+    }
+
+    private fun initViewModel() {
         viewModel = ViewModelProviders.of(this).get(RecognitionViewModel::class.java)
         viewModel.foundFaces.observe(this, Observer {
             Timber.d("onCreate: faces $it")
@@ -44,6 +66,27 @@ class MainActivity : AppCompatActivity(), PhotoSelectionUtil.UriCallback {
                 binding.manipulationView.setPhoto(it)
             }
         })
+        viewModel.error.observe(this, Observer {
+            if (it != null) {
+                showError(it)
+            }
+        })
+        viewModel.isSaved.observe(this, Observer {
+            if (it != null) showSuccess(it)
+        })
+    }
+
+    private fun showSuccess(filePath: String) {
+        toast("Photo saved")
+    }
+
+    private fun showError(e: Int) {
+        Timber.d("showError: $e")
+        when (e) {
+            RecognitionViewModel.NO_IMAGE -> toast("No photo")
+            RecognitionViewModel.NO_SD -> toast("No sd card")
+            RecognitionViewModel.NO_SPACE -> toast("No enough space")
+        }
     }
 
     private fun showEmojiPopup(face: Int) {
@@ -62,7 +105,28 @@ class MainActivity : AppCompatActivity(), PhotoSelectionUtil.UriCallback {
     }
 
     private fun saveChanges() {
+        if (!checkSdPermission(REQ_SD)) return
+        val res = binding.manipulationView.prepareResults()
+        if (res != null) {
+            viewModel.savePhoto("Test", res)
+        }
+    }
 
+    private fun checkSdPermission(code: Int): Boolean {
+        return Permissions.ensurePermissions(this, code, Permissions.READ_EXTERNAL, Permissions.WRITE_EXTERNAL)
+    }
+
+    private fun showPopup(anchor: View,
+                          listener: ((Int) -> Unit)?, vararg actions: String) {
+        val popupMenu = PopupMenu(anchor.context, anchor)
+        popupMenu.setOnMenuItemClickListener { item ->
+            listener?.invoke(item.order)
+            true
+        }
+        for (i in actions.indices) {
+            popupMenu.menu.add(1, i + 1000, i, actions[i])
+        }
+        popupMenu.show()
     }
 
     override fun onImageSelected(uri: Uri?, clipData: ClipData?) {
@@ -83,9 +147,15 @@ class MainActivity : AppCompatActivity(), PhotoSelectionUtil.UriCallback {
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         photoSelectionUtil.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (Permissions.isAllGranted(grantResults)) {
+            if (requestCode == REQ_SD) {
+                saveChanges()
+            }
+        }
     }
 
     companion object {
+        const val REQ_SD = 1445
         private val emojis = arrayOf(
             R.drawable.ic_wink,
             R.drawable.ic_unhappy,
