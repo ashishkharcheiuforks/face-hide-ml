@@ -21,6 +21,7 @@ import com.google.firebase.ml.vision.common.FirebaseVisionImage
 import com.google.firebase.ml.vision.face.FirebaseVisionFace
 import com.google.firebase.ml.vision.face.FirebaseVisionFaceDetectorOptions
 import timber.log.Timber
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -52,12 +53,35 @@ class RecognitionViewModel : ViewModel(), LifecycleObserver {
     private val _error: MutableLiveData<Int> = MutableLiveData()
     val error: LiveData<Int> = _error
 
+    private val _toShare: MutableLiveData<Uri> = MutableLiveData()
+    val toShare: LiveData<Uri> = _toShare
+
     private var size: Size? = null
 
     fun clear() {
         size = null
         _originalPhoto.postValue(null)
         _foundFaces.postValue(null)
+    }
+
+    fun sharePhoto(context: Context, fileName: String, results: PhotoManipulationView.Results) {
+        val original = originalPhoto.value
+        if (original == null) {
+            _error.postValue(NO_IMAGE)
+            return
+        }
+        _isLoading.postValue(true)
+        launchDefault {
+            val photo = preparePhoto(original, results)
+            val bytes = ByteArrayOutputStream()
+            photo.compress(Bitmap.CompressFormat.JPEG, 100, bytes)
+            val path = MediaStore.Images.Media.insertImage(context.contentResolver, photo, "$fileName.jpg", null)
+            val imageUri = Uri.parse(path)
+            withUIContext {
+                _isLoading.postValue(false)
+                _toShare.postValue(imageUri)
+            }
+        }
     }
 
     fun savePhoto(fileName: String, results: PhotoManipulationView.Results) {
@@ -76,30 +100,13 @@ class RecognitionViewModel : ViewModel(), LifecycleObserver {
             val file = File(appPath, "$fileName.jpg")
             if (file.exists()) file.delete()
 
-            val size = results.size
-            val widthFactor = original.width.toFloat() / size.width.toFloat()
-            val heightFactor = original.height.toFloat() / size.height.toFloat()
-            val factor = (widthFactor + heightFactor) / 2f
+            Timber.d("savePhoto: $file")
 
-            Timber.d("savePhoto: $factor, $file")
-
-            val newFaces = results.faces.map {
-                val rect = it.rect
-                val left = (rect.left.toFloat() * factor).toInt()
-                val top = (rect.top.toFloat() * factor).toInt()
-                val right = (rect.right.toFloat() * factor).toInt()
-                val bottom = (rect.bottom.toFloat() * factor).toInt()
-                it.rect = Rect(left, top, right, bottom)
-                it
-            }
-
-            val mutableBitmap = original.copy(Bitmap.Config.ARGB_8888, true)
-            val canvas = Canvas(mutableBitmap)
-            newFaces.forEach { it.draw(canvas) }
+            val photo = preparePhoto(original, results)
             var fos: FileOutputStream? = null
             try {
                 fos = FileOutputStream(file)
-                mutableBitmap.compress(Bitmap.CompressFormat.JPEG, 100, fos)
+                photo.compress(Bitmap.CompressFormat.JPEG, 100, fos)
                 fos.flush()
                 fos.close()
                 fos = null
@@ -123,6 +130,30 @@ class RecognitionViewModel : ViewModel(), LifecycleObserver {
                 _isSaved.postValue(file.toString())
             }
         }
+    }
+
+    private fun preparePhoto(original: Bitmap, results: PhotoManipulationView.Results): Bitmap {
+        val size = results.size
+        val widthFactor = original.width.toFloat() / size.width.toFloat()
+        val heightFactor = original.height.toFloat() / size.height.toFloat()
+        val factor = (widthFactor + heightFactor) / 2f
+
+        Timber.d("preparePhoto: $factor")
+
+        val newFaces = results.faces.map {
+            val rect = it.rect
+            val left = (rect.left.toFloat() * factor).toInt()
+            val top = (rect.top.toFloat() * factor).toInt()
+            val right = (rect.right.toFloat() * factor).toInt()
+            val bottom = (rect.bottom.toFloat() * factor).toInt()
+            it.rect = Rect(left, top, right, bottom)
+            it
+        }
+
+        val mutableBitmap = original.copy(Bitmap.Config.ARGB_8888, true)
+        val canvas = Canvas(mutableBitmap)
+        newFaces.forEach { it.draw(canvas) }
+        return mutableBitmap
     }
 
     fun detectFromBitmap(bitmap: Bitmap) {

@@ -61,12 +61,18 @@ class MainActivity : AppCompatActivity(), PhotoSelectionUtil.UriCallback {
         val view = DialogMoreBinding.inflate(LayoutInflater.from(this), null, false)
         if (binding.manipulationView.hasPhoto()) {
             view.saveButton.visibility = View.VISIBLE
+            view.shareButton.visibility = View.VISIBLE
         } else {
             view.saveButton.visibility = View.GONE
+            view.shareButton.visibility = View.GONE
         }
         view.saveButton.setOnClickListener {
             mDialog?.dismiss()
             saveChanges()
+        }
+        view.shareButton.setOnClickListener {
+            mDialog?.dismiss()
+            shareChanges()
         }
         view.settingsButton.setOnClickListener {
             mDialog?.dismiss()
@@ -137,6 +143,21 @@ class MainActivity : AppCompatActivity(), PhotoSelectionUtil.UriCallback {
                 else binding.loadingView.visibility = View.GONE
             }
         })
+        viewModel.toShare.observe(this, Observer {
+            if (it != null) {
+                sharePhoto(it)
+            }
+        })
+    }
+
+    private fun sharePhoto(uri: Uri) {
+        val intent = Intent(Intent.ACTION_SEND)
+        intent.type = "image/*"
+        intent.putExtra(Intent.EXTRA_STREAM, uri)
+        try {
+            startActivity(Intent.createChooser(intent, getString(R.string.share_with)))
+        } catch (e: java.lang.Exception) {
+        }
     }
 
     private fun showSuccess(filePath: String) {
@@ -204,15 +225,27 @@ class MainActivity : AppCompatActivity(), PhotoSelectionUtil.UriCallback {
 
     private fun saveChanges() {
         if (!checkSdPermission(REQ_SD)) return
-        showFieldDialog()
+        showFieldDialog(false)
     }
 
-    private fun showFieldDialog() {
+    private fun shareChanges() {
+        if (!checkSdPermission(REQ_SD_SHARE)) return
+        showFieldDialog(true)
+    }
+
+    private fun showFieldDialog(isShare: Boolean) {
         val builder = AlertDialog.Builder(this)
         val view = DialogSavePhotoBinding.inflate(layoutInflater)
+        if (isShare) {
+            view.titleView.text = getString(R.string.share_photo)
+            view.saveButton.text = getString(R.string.share)
+        } else {
+            view.titleView.text = getString(R.string.save_photo)
+            view.saveButton.text = getString(R.string.save)
+        }
         view.saveButton.setOnClickListener {
             mDialog?.dismiss()
-            savePhoto(view.fileNameField.text.toString().trim())
+            savePhoto(view.fileNameField.text.toString().trim(), isShare)
         }
         view.cancelButton.setOnClickListener {
             mDialog?.dismiss()
@@ -224,10 +257,14 @@ class MainActivity : AppCompatActivity(), PhotoSelectionUtil.UriCallback {
         mDialog = dialog
     }
 
-    private fun savePhoto(fileName: String) {
+    private fun savePhoto(fileName: String, share: Boolean = false) {
         val res = binding.manipulationView.prepareResults()
         if (res != null) {
-            viewModel.savePhoto(fileName, res)
+            if (share) {
+                viewModel.sharePhoto(this, fileName, res)
+            } else {
+                viewModel.savePhoto(fileName, res)
+            }
         } else {
             toast(getString(R.string.failed_to_read_photo))
         }
@@ -258,6 +295,8 @@ class MainActivity : AppCompatActivity(), PhotoSelectionUtil.UriCallback {
         if (Permissions.isAllGranted(grantResults)) {
             if (requestCode == REQ_SD) {
                 saveChanges()
+            } else if (requestCode == REQ_SD_SHARE) {
+                shareChanges()
             }
         }
     }
@@ -270,6 +309,7 @@ class MainActivity : AppCompatActivity(), PhotoSelectionUtil.UriCallback {
 
     companion object {
         const val REQ_SD = 1445
+        const val REQ_SD_SHARE = 1446
         private val emojis = arrayOf(
             R.drawable.ic_wink,
             R.drawable.ic_unhappy,
