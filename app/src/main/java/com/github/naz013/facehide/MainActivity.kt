@@ -2,6 +2,7 @@ package com.github.naz013.facehide
 
 import android.content.ClipData
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
@@ -90,6 +91,13 @@ class MainActivity : AppCompatActivity(), PhotoSelectionUtil.UriCallback {
             Prefs.getInstance(this).setAutoFace(!Prefs.getInstance(this).isAutoFace())
             view.autoFaceState.text = autoFaceState(Prefs.getInstance(this).isAutoFace())
         }
+
+        try {
+            val pInfo = packageManager.getPackageInfo(packageName, 0)
+            view.versionView.text = pInfo.versionName
+        } catch (e: PackageManager.NameNotFoundException) {
+        }
+
         builder.setView(view.root)
         val dialog = builder.create()
         dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
