@@ -14,12 +14,14 @@ import androidx.databinding.DataBindingUtil
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProviders
 import androidx.recyclerview.widget.GridLayoutManager
+import com.github.naz013.facehide.data.RecognitionViewModel
 import com.github.naz013.facehide.databinding.ActivityMainBinding
 import com.github.naz013.facehide.databinding.DialogEmojiListBinding
 import com.github.naz013.facehide.databinding.DialogSavePhotoBinding
 import com.github.naz013.facehide.utils.Permissions
 import com.github.naz013.facehide.utils.PhotoSelectionUtil
 import com.github.naz013.facehide.utils.UriUtil
+import com.github.naz013.facehide.views.EmojiAdapter
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import org.jetbrains.anko.toast
 import timber.log.Timber
@@ -38,7 +40,9 @@ class MainActivity : AppCompatActivity(), PhotoSelectionUtil.UriCallback {
         binding.galleryButton.setOnClickListener { photoSelectionUtil.pickFromGallery() }
         binding.cameraButton.setOnClickListener { photoSelectionUtil.takePhoto() }
         binding.moreButton.setOnClickListener { showMorePopup(it) }
-        binding.manipulationView.emojiPopupListener = { showEmojiPopup(it) }
+        binding.manipulationView.emojiPopupListener = { index, has ->
+            showEmojiPopup(index, has)
+        }
         binding.loadingView.setOnClickListener { }
 
         photoSelectionUtil = PhotoSelectionUtil(this, false, this)
@@ -136,7 +140,7 @@ class MainActivity : AppCompatActivity(), PhotoSelectionUtil.UriCallback {
         }
     }
 
-    private fun showEmojiPopup(face: Int) {
+    private fun showEmojiPopup(face: Int, hasFace: Boolean) {
         val bottomSheetDialog = BottomSheetDialog(this)
         val view = DialogEmojiListBinding.inflate(layoutInflater)
         view.emojiList.layoutManager = GridLayoutManager(this, 5)
@@ -147,6 +151,15 @@ class MainActivity : AppCompatActivity(), PhotoSelectionUtil.UriCallback {
         }
         adapter.setData(emojis.toList())
         view.emojiList.adapter = adapter
+        if (hasFace) {
+            view.removeButton.visibility = View.VISIBLE
+            view.removeButton.setOnClickListener {
+                binding.manipulationView.setEmojiToFace(face, 0)
+                bottomSheetDialog.dismiss()
+            }
+        } else {
+            view.removeButton.visibility = View.GONE
+        }
         bottomSheetDialog.setContentView(view.root)
         bottomSheetDialog.show()
     }

@@ -1,4 +1,4 @@
-package com.github.naz013.facehide
+package com.github.naz013.facehide.data
 
 import android.content.Context
 import android.graphics.Bitmap
@@ -13,7 +13,6 @@ import androidx.lifecycle.LifecycleObserver
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import com.github.naz013.facehide.data.Size
 import com.github.naz013.facehide.utils.launchDefault
 import com.github.naz013.facehide.utils.withUIContext
 import com.github.naz013.facehide.views.PhotoManipulationView
@@ -33,6 +32,7 @@ class RecognitionViewModel : ViewModel(), LifecycleObserver {
     private val realTimeOpts = FirebaseVisionFaceDetectorOptions.Builder()
         .setPerformanceMode(FirebaseVisionFaceDetectorOptions.FAST)
         .setContourMode(FirebaseVisionFaceDetectorOptions.NO_CONTOURS)
+        .setClassificationMode(FirebaseVisionFaceDetectorOptions.ALL_CLASSIFICATIONS)
         .build()
 
     private val detector = FirebaseVision.getInstance().getVisionFaceDetector(realTimeOpts)

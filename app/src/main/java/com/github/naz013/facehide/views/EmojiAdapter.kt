@@ -1,9 +1,10 @@
-package com.github.naz013.facehide
+package com.github.naz013.facehide.views
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.databinding.DataBindingUtil
 import androidx.recyclerview.widget.RecyclerView
+import com.github.naz013.facehide.R
 import com.github.naz013.facehide.databinding.ListItemEmojiBinding
 
 class EmojiAdapter : RecyclerView.Adapter<EmojiAdapter.Holder>() {

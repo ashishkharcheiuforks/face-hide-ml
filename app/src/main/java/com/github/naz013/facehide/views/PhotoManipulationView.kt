@@ -9,8 +9,10 @@ import android.view.View
 import androidx.annotation.DrawableRes
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.graphics.drawable.toBitmap
-import com.github.naz013.facehide.RecognitionViewModel
+import com.github.naz013.facehide.R
+import com.github.naz013.facehide.data.RecognitionViewModel
 import com.github.naz013.facehide.data.Size
+import com.github.naz013.facehide.utils.Prefs
 import com.github.naz013.facehide.utils.ViewUtils
 import timber.log.Timber
 import java.util.*
@@ -36,7 +38,7 @@ class PhotoManipulationView : View {
     private var mX: Float = 0f
     private var mY: Float = 0f
 
-    var emojiPopupListener: ((Int) -> Unit)? = null
+    var emojiPopupListener: ((Int, Boolean) -> Unit)? = null
 
     constructor(context: Context): this(context, null)
     constructor(context: Context, attrs: AttributeSet?): this(context, attrs, 0)
@@ -108,6 +110,7 @@ class PhotoManipulationView : View {
     }
 
     fun showFaces(scanResult: RecognitionViewModel.ScanResult) {
+        val autoDetect = Prefs.getInstance(context).isAutoFace()
         val currentPhoto = photo ?: return
         val currentBitmap = currentPhoto.bitmap
         val widthFactor = currentBitmap.width.toFloat() / scanResult.size.width.toFloat()
@@ -123,7 +126,11 @@ class PhotoManipulationView : View {
             val top = (rect.top.toFloat() * factor).toInt() + point.y
             val right = (rect.right.toFloat() * factor).toInt() + point.x
             val bottom = (rect.bottom.toFloat() * factor).toInt() + point.y
-            Face(Rect(left, top, right, bottom))
+            if (autoDetect) {
+                Face(Rect(left, top, right, bottom), Mask(toDrawable(getAutoEmoji(it.smilingProbability))))
+            } else {
+                Face(Rect(left, top, right, bottom))
+            }
         }
         this.faces.clear()
         this.faces.addAll(newFaces)
@@ -131,8 +138,25 @@ class PhotoManipulationView : View {
     }
 
     fun setEmojiToFace(faceId: Int, emojiId: Int) {
-        faces[faceId].mask = Mask(toDrawable(emojiId))
+        if (emojiId == 0) {
+            faces[faceId].mask = null
+        } else {
+            faces[faceId].mask = Mask(toDrawable(emojiId))
+        }
         this.invalidate()
+    }
+
+    fun hasPhoto(): Boolean {
+        return photo != null
+    }
+
+    private fun getAutoEmoji(smilingProbability: Float): Int {
+        if (smilingProbability == -1f) return R.drawable.ic_confused
+        return when {
+            smilingProbability >= 0.7f -> R.drawable.ic_smiling
+            smilingProbability >= 0.4f -> R.drawable.ic_confused
+            else -> R.drawable.ic_sad
+        }
     }
 
     private fun selectPoint(bitmap: Bitmap, width: Int, height: Int): Point {
@@ -203,11 +227,11 @@ class PhotoManipulationView : View {
                     val isPhoto = photo?.inBounds(event.x.toInt(), event.y.toInt()) ?: false
                     Timber.d("processTouch: $isPhoto, $event")
                     if (index != -1) {
-                        emojiPopupListener?.invoke(index)
+                        emojiPopupListener?.invoke(index, faces[index].mask != null)
                         v.playSoundEffect(SoundEffectConstants.CLICK)
                     } else if (isPhoto) {
                         Timber.d("processTouch: photo clicked")
-                        v.playSoundEffect(SoundEffectConstants.CLICK)
+//                        v.playSoundEffect(SoundEffectConstants.CLICK)
                     }
                 }
                 isSlided = false
@@ -229,10 +253,6 @@ class PhotoManipulationView : View {
     private fun toDrawable(@DrawableRes res: Int): Bitmap? {
         if (res == 0) return null
         return AppCompatResources.getDrawable(context, res)?.toBitmap()
-    }
-
-    fun hasPhoto(): Boolean {
-        return photo != null
     }
 
     inner class Face(val rect: Rect, var mask: Mask? = null) {
