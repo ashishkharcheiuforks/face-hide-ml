@@ -37,6 +37,8 @@ class MainActivity : AppCompatActivity(), PhotoSelectionUtil.UriCallback {
         super.onCreate(savedInstanceState)
         binding = DataBindingUtil.setContentView(this, R.layout.activity_main)
 
+        binding.loadingView.visibility = View.GONE
+
         binding.galleryButton.setOnClickListener { photoSelectionUtil.pickFromGallery() }
         binding.cameraButton.setOnClickListener { photoSelectionUtil.takePhoto() }
         binding.moreButton.setOnClickListener { showMorePopup() }
@@ -127,22 +129,20 @@ class MainActivity : AppCompatActivity(), PhotoSelectionUtil.UriCallback {
 
     private fun showSuccess(filePath: String) {
         val builder = AlertDialog.Builder(this)
-        builder.setTitle(getString(R.string.photo_saved))
-        builder.setMessage(filePath)
-        builder.setPositiveButton(getString(R.string.view)) { dialog, _ ->
-            dialog.dismiss()
+        val view = DialogSaveResultBinding.inflate(LayoutInflater.from(this), null, false)
+        view.pathView.text = filePath
+        view.viewButton.setOnClickListener {
+            mDialog?.dismiss()
             showPhoto(filePath)
         }
-        builder.setNeutralButton(getString(R.string.cancel)) { dialog, _ ->
-            dialog.dismiss()
+        view.cancelButton.setOnClickListener {
+            mDialog?.dismiss()
         }
+        builder.setView(view.root)
         val dialog = builder.create()
-        dialog.setOnShowListener {
-            dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(Color.WHITE)
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(Color.WHITE)
-            dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setTextColor(Color.WHITE)
-        }
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
         dialog.show()
+        mDialog = dialog
     }
 
     private fun showPhoto(filePath: String) {
