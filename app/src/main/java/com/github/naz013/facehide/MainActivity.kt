@@ -154,6 +154,12 @@ class MainActivity : AppCompatActivity(), PhotoSelectionUtil.UriCallback {
         }
     }
 
+    override fun onDestroy() {
+        binding.manipulationView.clear()
+        viewModel.clear()
+        super.onDestroy()
+    }
+
     companion object {
         const val REQ_SD = 1445
         private val emojis = arrayOf(

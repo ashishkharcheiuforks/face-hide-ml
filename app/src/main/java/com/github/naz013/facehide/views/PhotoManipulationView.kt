@@ -67,9 +67,13 @@ class PhotoManipulationView : View {
         }
     }
 
-    fun setPhoto(bitmap: Bitmap) {
+    fun clear() {
         this.photo = null
         this.faces.clear()
+    }
+
+    fun setPhoto(bitmap: Bitmap) {
+        clear()
 
         val resizedPhoto = scaledBitmap(bitmap, mWidth, mHeight)
         if (resizedPhoto != null) {

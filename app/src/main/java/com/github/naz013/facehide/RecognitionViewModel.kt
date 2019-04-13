@@ -53,6 +53,12 @@ class RecognitionViewModel : ViewModel(), LifecycleObserver {
 
     private var scaledPhoto: Bitmap? = null
 
+    fun clear() {
+        scaledPhoto = null
+        _originalPhoto.postValue(null)
+        _foundFaces.postValue(null)
+    }
+
     fun savePhoto(fileName: String, results: PhotoManipulationView.Results) {
         val original = originalPhoto.value
         if (original == null) {
@@ -92,7 +98,7 @@ class RecognitionViewModel : ViewModel(), LifecycleObserver {
             var fos: FileOutputStream? = null
             try {
                 fos = FileOutputStream(file)
-                mutableBitmap.compress(Bitmap.CompressFormat.PNG, 100, fos)
+                mutableBitmap.compress(Bitmap.CompressFormat.JPEG, 100, fos)
                 fos.flush()
                 fos.close()
                 fos = null
@@ -152,7 +158,7 @@ class RecognitionViewModel : ViewModel(), LifecycleObserver {
                 }
                 detectFromBitmap(bmp)
             } catch (e: IOException) {
-                showError()
+                _error.postValue(NO_IMAGE)
             }
         }
     }
@@ -181,10 +187,6 @@ class RecognitionViewModel : ViewModel(), LifecycleObserver {
         Timber.d("scaledBitmap: nw -> $scaleWidth, nh -> $scaleHeight")
 
         return Bitmap.createScaledBitmap(bitmap, scaleWidth, scaleHeight, false)
-    }
-
-    private fun showError() {
-
     }
 
     private fun runDetection(image: FirebaseVisionImage) {
