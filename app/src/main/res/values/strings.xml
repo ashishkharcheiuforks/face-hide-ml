@@ -22,4 +22,7 @@
     <string name="failed_to_find_faces_on_photo">Failed to find faces on photo</string>
     <string name="remove_emoji">Remove Emoji</string>
     <string name="select_emoji">Select Emoji</string>
+    <string name="yes">Yes</string>
+    <string name="add_emoji_automatically">Add emoji automatically</string>
+    <string name="no">No</string>
 </resources>

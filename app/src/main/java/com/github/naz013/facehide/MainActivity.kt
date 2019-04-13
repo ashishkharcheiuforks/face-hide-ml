@@ -16,12 +16,10 @@ import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProviders
 import androidx.recyclerview.widget.GridLayoutManager
 import com.github.naz013.facehide.data.RecognitionViewModel
-import com.github.naz013.facehide.databinding.ActivityMainBinding
-import com.github.naz013.facehide.databinding.DialogEmojiListBinding
-import com.github.naz013.facehide.databinding.DialogMoreBinding
-import com.github.naz013.facehide.databinding.DialogSavePhotoBinding
+import com.github.naz013.facehide.databinding.*
 import com.github.naz013.facehide.utils.Permissions
 import com.github.naz013.facehide.utils.PhotoSelectionUtil
+import com.github.naz013.facehide.utils.Prefs
 import com.github.naz013.facehide.utils.UriUtil
 import com.github.naz013.facehide.views.EmojiAdapter
 import com.google.android.material.bottomsheet.BottomSheetDialog
@@ -74,8 +72,27 @@ class MainActivity : AppCompatActivity(), PhotoSelectionUtil.UriCallback {
         mDialog = dialog
     }
 
-    private fun openSettings() {
+    private fun autoFaceState(b: Boolean): String {
+        return if (b) {
+            getString(R.string.yes)
+        } else {
+            getString(R.string.no)
+        }
+    }
 
+    private fun openSettings() {
+        val builder = AlertDialog.Builder(this)
+        val view = DialogSettingsBinding.inflate(LayoutInflater.from(this), null, false)
+        view.autoFaceState.text = autoFaceState(Prefs.getInstance(this).isAutoFace())
+        view.autoButton.setOnClickListener {
+            Prefs.getInstance(this).setAutoFace(!Prefs.getInstance(this).isAutoFace())
+            view.autoFaceState.text = autoFaceState(Prefs.getInstance(this).isAutoFace())
+        }
+        builder.setView(view.root)
+        val dialog = builder.create()
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        dialog.show()
+        mDialog = dialog
     }
 
     private fun initViewModel() {
