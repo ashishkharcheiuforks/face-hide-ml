@@ -199,8 +199,12 @@ class RecognitionViewModel : ViewModel(), LifecycleObserver {
             .addOnSuccessListener {
                 Timber.d("runDetection: success $it")
                 _isLoading.postValue(false)
-                size?.let { s ->
-                    _foundFaces.postValue(ScanResult(s, it))
+                if (it.isEmpty()) {
+                    _error.postValue(NO_FACES)
+                } else {
+                    size?.let { s ->
+                        _foundFaces.postValue(ScanResult(s, it))
+                    }
                 }
             }
             .addOnCanceledListener {

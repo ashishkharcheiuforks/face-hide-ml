@@ -16,6 +16,7 @@ import com.github.naz013.facehide.utils.Prefs
 import com.github.naz013.facehide.utils.ViewUtils
 import timber.log.Timber
 import java.util.*
+import kotlin.math.max
 import kotlin.math.min
 
 
@@ -127,7 +128,12 @@ class PhotoManipulationView : View {
             val right = (rect.right.toFloat() * factor).toInt() + point.x
             val bottom = (rect.bottom.toFloat() * factor).toInt() + point.y
             if (autoDetect) {
-                Face(Rect(left, top, right, bottom), Mask(toDrawable(getAutoEmoji(it.smilingProbability))))
+                val bmp = toDrawable(getAutoEmoji(it.smilingProbability))
+                if (bmp != null) {
+                    Face(Rect(left, top, right, bottom), Mask(bmp))
+                } else {
+                    Face(Rect(left, top, right, bottom))
+                }
             } else {
                 Face(Rect(left, top, right, bottom))
             }
@@ -141,7 +147,10 @@ class PhotoManipulationView : View {
         if (emojiId == 0) {
             faces[faceId].mask = null
         } else {
-            faces[faceId].mask = Mask(toDrawable(emojiId))
+            val bmp = toDrawable(emojiId)
+            if (bmp != null) {
+                faces[faceId].mask = Mask(bmp)
+            }
         }
         this.invalidate()
     }
@@ -268,13 +277,39 @@ class PhotoManipulationView : View {
         }
     }
 
-    inner class Mask(private val bitmap: Bitmap?, var rect: Rect = Rect(), var paint: Paint = Paint()) {
+    inner class Mask(private val bitmap: Bitmap, var paint: Paint = Paint()) {
+        var rect: Rect = Rect()
+            set(value) {
+                field = value
+                if (min(value.width(), value.height()) * 2 < max(value.width(), value.height())) {
+                    srcRect = if (value.width() > value.height()) {
+                        if (value.centerY() > mHeight / 2) {
+                            //bottom
+                            Rect(0, 0, bitmap.width, value.height())
+                        } else {
+                            //top
+                            Rect(0, bitmap.height - value.height(), bitmap.width, bitmap.height)
+                        }
+                    } else {
+                        if (value.centerX() > mWidth / 2) {
+                            //right
+                            Rect(0, 0, value.width(), bitmap.height)
+                        } else {
+                            //left
+                            Rect(bitmap.width - value.width(), 0, bitmap.width, bitmap.height)
+                        }
+                    }
+
+                } else {
+                    srcRect = null
+                }
+            }
+        var srcRect: Rect? = Rect()
+
         fun draw(canvas: Canvas) {
             Timber.d("draw: $rect")
-            if (bitmap != null) {
-                val r = Rect(rect)
-                canvas.drawBitmap(bitmap, null, r, paint)
-            }
+            val dstRect = Rect(rect)
+            canvas.drawBitmap(bitmap, srcRect, dstRect, paint)
         }
     }
 
