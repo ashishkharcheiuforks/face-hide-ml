@@ -50,6 +50,8 @@ class MainActivity : AppCompatActivity(), PhotoSelectionUtil.UriCallback {
         }
         binding.loadingView.setOnClickListener { }
 
+        adapter.setData(emojis.toList())
+
         photoSelectionUtil = PhotoSelectionUtil(this, false, this)
         initViewModel()
     }
@@ -186,7 +188,6 @@ class MainActivity : AppCompatActivity(), PhotoSelectionUtil.UriCallback {
             binding.manipulationView.setEmojiToFace(face, it)
             bottomSheetDialog.dismiss()
         }
-        adapter.setData(emojis.toList())
         view.emojiList.adapter = adapter
         if (hasFace) {
             view.removeButton.visibility = View.VISIBLE
