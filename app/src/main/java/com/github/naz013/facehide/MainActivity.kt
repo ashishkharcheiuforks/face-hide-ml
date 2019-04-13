@@ -32,6 +32,8 @@ class MainActivity : AppCompatActivity(), PhotoSelectionUtil.UriCallback {
     private lateinit var photoSelectionUtil: PhotoSelectionUtil
     private lateinit var viewModel: RecognitionViewModel
     private lateinit var binding: ActivityMainBinding
+
+    private val adapter = EmojiAdapter()
     private var mDialog: AlertDialog? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -180,7 +182,6 @@ class MainActivity : AppCompatActivity(), PhotoSelectionUtil.UriCallback {
         val bottomSheetDialog = BottomSheetDialog(this)
         val view = DialogEmojiListBinding.inflate(layoutInflater)
         view.emojiList.layoutManager = GridLayoutManager(this, 5)
-        val adapter = EmojiAdapter()
         adapter.clickListener = {
             binding.manipulationView.setEmojiToFace(face, it)
             bottomSheetDialog.dismiss()
