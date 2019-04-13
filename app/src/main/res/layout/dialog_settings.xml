@@ -64,6 +64,15 @@
             android:layout_height="1dp"
             android:background="@color/colorDivider" />
 
+        <androidx.appcompat.widget.AppCompatTextView
+            android:layout_width="match_parent"
+            android:textAppearance="?textAppearanceSubtitle2"
+            android:textColor="#ffffff"
+            android:layout_marginTop="16dp"
+            app:fontFamily="@font/robotomono_regular"
+            android:text="@string/icon_made_by_twitter_from_www_flaticon_com"
+            android:layout_height="wrap_content" />
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

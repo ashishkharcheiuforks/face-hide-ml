@@ -304,7 +304,15 @@ class MainActivity : AppCompatActivity(), PhotoSelectionUtil.UriCallback {
             R.drawable.ic_bored_1,
             R.drawable.ic_bored_2,
             R.drawable.ic_angry,
-            R.drawable.ic_angry_1
+            R.drawable.ic_angry_1,
+            R.drawable.ic_104_ghost,
+            R.drawable.ic_103_alien,
+            R.drawable.ic_101_devil,
+            R.drawable.ic_042_cat,
+            R.drawable.ic_034_cat_8,
+            R.drawable.ic_039_cat_3,
+            R.drawable.ic_099_poo,
+            R.drawable.ic_065_angry_2
         )
     }
 }
