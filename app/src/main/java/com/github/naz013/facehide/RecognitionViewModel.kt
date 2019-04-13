@@ -13,6 +13,7 @@ import androidx.lifecycle.LifecycleObserver
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import com.github.naz013.facehide.data.Size
 import com.github.naz013.facehide.utils.launchDefault
 import com.github.naz013.facehide.utils.withUIContext
 import com.github.naz013.facehide.views.PhotoManipulationView
@@ -51,10 +52,10 @@ class RecognitionViewModel : ViewModel(), LifecycleObserver {
     private val _error: MutableLiveData<Int> = MutableLiveData()
     val error: LiveData<Int> = _error
 
-    private var scaledPhoto: Bitmap? = null
+    private var size: Size? = null
 
     fun clear() {
-        scaledPhoto = null
+        size = null
         _originalPhoto.postValue(null)
         _foundFaces.postValue(null)
     }
@@ -125,12 +126,12 @@ class RecognitionViewModel : ViewModel(), LifecycleObserver {
     }
 
     fun detectFromBitmap(bitmap: Bitmap) {
-        scaledPhoto = null
+        size = null
         _isLoading.postValue(true)
         launchDefault {
             _originalPhoto.postValue(bitmap)
             val scaled = scaledBitmap(bitmap, 1024)
-            scaledPhoto = scaled
+            size = Size(scaled.width, scaled.height)
             val image = FirebaseVisionImage.fromBitmap(scaled)
             withUIContext {
                 runDetection(image)
@@ -198,8 +199,8 @@ class RecognitionViewModel : ViewModel(), LifecycleObserver {
             .addOnSuccessListener {
                 Timber.d("runDetection: success $it")
                 _isLoading.postValue(false)
-                scaledPhoto?.let { photo ->
-                    _foundFaces.postValue(ScanResult(photo, it))
+                size?.let { s ->
+                    _foundFaces.postValue(ScanResult(s, it))
                 }
             }
             .addOnCanceledListener {
@@ -211,7 +212,7 @@ class RecognitionViewModel : ViewModel(), LifecycleObserver {
             }
     }
 
-    data class ScanResult(val bmp: Bitmap, val list: List<FirebaseVisionFace>)
+    data class ScanResult(val size: Size, val list: List<FirebaseVisionFace>)
 
     companion object Error {
         const val NO_IMAGE = 0

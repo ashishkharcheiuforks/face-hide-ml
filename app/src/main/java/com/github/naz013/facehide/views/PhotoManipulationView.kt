@@ -10,6 +10,7 @@ import androidx.annotation.DrawableRes
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.graphics.drawable.toBitmap
 import com.github.naz013.facehide.RecognitionViewModel
+import com.github.naz013.facehide.data.Size
 import com.github.naz013.facehide.utils.ViewUtils
 import timber.log.Timber
 import java.util.*
@@ -109,8 +110,8 @@ class PhotoManipulationView : View {
     fun showFaces(scanResult: RecognitionViewModel.ScanResult) {
         val currentPhoto = photo ?: return
         val currentBitmap = currentPhoto.bitmap
-        val widthFactor = currentBitmap.width.toFloat() / scanResult.bmp.width.toFloat()
-        val heightFactor = currentBitmap.height.toFloat() / scanResult.bmp.height.toFloat()
+        val widthFactor = currentBitmap.width.toFloat() / scanResult.size.width.toFloat()
+        val heightFactor = currentBitmap.height.toFloat() / scanResult.size.height.toFloat()
         val factor = (widthFactor + heightFactor) / 2f
 
         Timber.d("showFaces: $factor")
@@ -269,8 +270,6 @@ class PhotoManipulationView : View {
     }
 
     inner class Results(val size: Size, val faces: List<Mask>)
-
-    inner class Size(val width: Int, val height: Int)
 
     companion object {
 
