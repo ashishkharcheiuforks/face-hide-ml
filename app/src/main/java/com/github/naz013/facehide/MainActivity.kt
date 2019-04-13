@@ -4,12 +4,13 @@ import android.content.ClipData
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.net.Uri
 import android.os.Bundle
+import android.view.LayoutInflater
 import android.view.View
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.appcompat.widget.PopupMenu
 import androidx.databinding.DataBindingUtil
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProviders
@@ -17,6 +18,7 @@ import androidx.recyclerview.widget.GridLayoutManager
 import com.github.naz013.facehide.data.RecognitionViewModel
 import com.github.naz013.facehide.databinding.ActivityMainBinding
 import com.github.naz013.facehide.databinding.DialogEmojiListBinding
+import com.github.naz013.facehide.databinding.DialogMoreBinding
 import com.github.naz013.facehide.databinding.DialogSavePhotoBinding
 import com.github.naz013.facehide.utils.Permissions
 import com.github.naz013.facehide.utils.PhotoSelectionUtil
@@ -26,12 +28,12 @@ import com.google.android.material.bottomsheet.BottomSheetDialog
 import org.jetbrains.anko.toast
 import timber.log.Timber
 
-
 class MainActivity : AppCompatActivity(), PhotoSelectionUtil.UriCallback {
 
     private lateinit var photoSelectionUtil: PhotoSelectionUtil
     private lateinit var viewModel: RecognitionViewModel
     private lateinit var binding: ActivityMainBinding
+    private var mDialog: AlertDialog? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -39,7 +41,7 @@ class MainActivity : AppCompatActivity(), PhotoSelectionUtil.UriCallback {
 
         binding.galleryButton.setOnClickListener { photoSelectionUtil.pickFromGallery() }
         binding.cameraButton.setOnClickListener { photoSelectionUtil.takePhoto() }
-        binding.moreButton.setOnClickListener { showMorePopup(it) }
+        binding.moreButton.setOnClickListener { showMorePopup() }
         binding.manipulationView.emojiPopupListener = { index, has ->
             showEmojiPopup(index, has)
         }
@@ -49,18 +51,27 @@ class MainActivity : AppCompatActivity(), PhotoSelectionUtil.UriCallback {
         initViewModel()
     }
 
-    private fun showMorePopup(view: View) {
-        val items = if (binding.manipulationView.hasPhoto()) {
-            arrayOf(getString(R.string.save_photo), getString(R.string.settings))
+    private fun showMorePopup() {
+        val builder = AlertDialog.Builder(this)
+        val view = DialogMoreBinding.inflate(LayoutInflater.from(this), null, false)
+        if (binding.manipulationView.hasPhoto()) {
+            view.saveButton.visibility = View.VISIBLE
         } else {
-            arrayOf(getString(R.string.settings))
+            view.saveButton.visibility = View.GONE
         }
-        showPopup(view, {
-            when (it) {
-                0 -> saveChanges()
-                1 -> openSettings()
-            }
-        }, *items)
+        view.saveButton.setOnClickListener {
+            mDialog?.dismiss()
+            saveChanges()
+        }
+        view.settingsButton.setOnClickListener {
+            mDialog?.dismiss()
+            openSettings()
+        }
+        builder.setView(view.root)
+        val dialog = builder.create()
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        dialog.show()
+        mDialog = dialog
     }
 
     private fun openSettings() {
@@ -172,22 +183,18 @@ class MainActivity : AppCompatActivity(), PhotoSelectionUtil.UriCallback {
     private fun showFieldDialog() {
         val builder = AlertDialog.Builder(this)
         val view = DialogSavePhotoBinding.inflate(layoutInflater)
-        builder.setTitle(getString(R.string.save_photo))
-        builder.setView(view.root)
-        builder.setPositiveButton(getString(R.string.save)) { dialog, _ ->
-            dialog.dismiss()
+        view.saveButton.setOnClickListener {
+            mDialog?.dismiss()
             savePhoto(view.fileNameField.text.toString().trim())
         }
-        builder.setNeutralButton(getString(R.string.cancel)) { dialog, _ ->
-            dialog.dismiss()
+        view.cancelButton.setOnClickListener {
+            mDialog?.dismiss()
         }
+        builder.setView(view.root)
         val dialog = builder.create()
-        dialog.setOnShowListener {
-            dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(Color.WHITE)
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(Color.WHITE)
-            dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setTextColor(Color.WHITE)
-        }
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
         dialog.show()
+        mDialog = dialog
     }
 
     private fun savePhoto(fileName: String) {
@@ -201,21 +208,6 @@ class MainActivity : AppCompatActivity(), PhotoSelectionUtil.UriCallback {
 
     private fun checkSdPermission(code: Int): Boolean {
         return Permissions.ensurePermissions(this, code, Permissions.READ_EXTERNAL, Permissions.WRITE_EXTERNAL)
-    }
-
-    private fun showPopup(
-        anchor: View,
-        listener: ((Int) -> Unit)?, vararg actions: String
-    ) {
-        val popupMenu = PopupMenu(anchor.context, anchor)
-        popupMenu.setOnMenuItemClickListener { item ->
-            listener?.invoke(item.order)
-            true
-        }
-        for (i in actions.indices) {
-            popupMenu.menu.add(1, i + 1000, i, actions[i])
-        }
-        popupMenu.show()
     }
 
     override fun onImageSelected(uri: Uri?, clipData: ClipData?) {

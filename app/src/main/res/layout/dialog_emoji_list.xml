@@ -5,7 +5,7 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="#000000"
+        android:background="@drawable/dialog_bg"
         android:orientation="vertical"
         android:padding="24dp">
 
@@ -13,7 +13,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/select_emoji"
-            android:textAppearance="?textAppearanceHeadline5" />
+            android:textAppearance="?textAppearanceHeadline5"
+            app:fontFamily="@font/robotomono_regular" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/removeButton"
@@ -21,7 +22,8 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
             android:text="@string/remove_emoji"
-            app:backgroundTint="@color/colorAccent" />
+            app:backgroundTint="@color/colorAccent"
+            app:fontFamily="@font/robotomono_regular" />
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/emojiList"
