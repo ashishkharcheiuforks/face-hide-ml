@@ -21,6 +21,18 @@
             "package_name": "com.github.naz013.facehide",
             "certificate_hash": "6bfd36bde48f7834f1fafaacff93b897bcbe155e"
           }
+        },
+        {
+          "client_id": "86041741976-rr3gm20fknl7jpe711ij4cmeurohnede.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.github.naz013.facehide",
+            "certificate_hash": "44ba89bf28b8923f4a7671dd4c468bb53dd7e7be"
+          }
+        },
+        {
+          "client_id": "86041741976-f4cgtj3tkna8bml4kpqc3dmqi5a8mskc.apps.googleusercontent.com",
+          "client_type": 3
         }
       ],
       "api_key": [

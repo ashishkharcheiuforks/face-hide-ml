@@ -13,10 +13,22 @@ android {
         versionName "1.0.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
+    signingConfigs {
+        app {
+            storeFile file('release_key.jks')
+            storePassword 'facehide14041991'
+            keyAlias 'com.nazar.faceapp'
+            keyPassword 'facehide14041991'
+        }
+    }
     buildTypes {
         release {
-            minifyEnabled false
+            minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            debuggable false
+            zipAlignEnabled true
+            jniDebuggable false
+            signingConfig signingConfigs.app
         }
         debug {
             applicationVariants.all { variant ->
